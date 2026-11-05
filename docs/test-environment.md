@@ -35,3 +35,9 @@ A branch de testes foi criada. Isso isola o código-fonte, mas ainda não repres
 
 ## Critério de encerramento
 O ambiente só poderá ser considerado pronto quando houver hospedagem de preview independente, backend de teste separado, autenticação validada, restauração testada e evidências documentadas. A publicação da versão final continua dependendo de aprovação expressa.
+
+## Bloqueio antes de publicar o preview
+
+A inspeção do `index.html` desta branch confirmou que o endereço e a chave pública do projeto Supabase atualmente configurado estão embutidos no código do navegador. A chave pública não substitui as políticas RLS e não é uma chave administrativa, mas o endereço aponta para o projeto atualmente configurado. Portanto, publicar esta cópia sem trocar a configuração poderia fazer o preview conversar com o backend de produção.
+
+**Não publicar o preview ainda.** Antes, criar um projeto Supabase exclusivo para testes, configurar URL e chave pública de teste por configuração própria do ambiente e confirmar que nenhuma operação do preview alcança o projeto de produção. Não copiar senha, token de sessão nem chave `service_role` para o repositório.
