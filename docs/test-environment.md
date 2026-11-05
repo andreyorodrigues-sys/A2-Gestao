@@ -41,3 +41,25 @@ O ambiente só poderá ser considerado pronto quando houver hospedagem de previe
 A inspeção do `index.html` desta branch confirmou que o endereço e a chave pública do projeto Supabase atualmente configurado estão embutidos no código do navegador. A chave pública não substitui as políticas RLS e não é uma chave administrativa, mas o endereço aponta para o projeto atualmente configurado. Portanto, publicar esta cópia sem trocar a configuração poderia fazer o preview conversar com o backend de produção.
 
 **Não publicar o preview ainda.** Antes, criar um projeto Supabase exclusivo para testes, configurar URL e chave pública de teste por configuração própria do ambiente e confirmar que nenhuma operação do preview alcança o projeto de produção. Não copiar senha, token de sessão nem chave `service_role` para o repositório.
+
+
+## Auditoria técnica do carregamento do aplicativo
+
+Na revisão do arquivo `index.html` da branch de testes:
+- O arquivo tem 2.955 linhas e aproximadamente 432 KB.
+- Foram encontrados 14 elementos `<script>`: 12 blocos inline de funcionalidades, uma biblioteca externa de PDF e o bloco de autenticação.
+- O bloco `A2_AUTH_GATE_V1` está no final do documento (linha 2.869), depois dos blocos que inicializam funcionalidades.
+- Há leituras e gravações de `localStorage` em blocos anteriores ao gate, incluindo leitura de configurações e dados, backup e renderização.
+- Portanto, ocultar a interface por CSS não impede a execução desses scripts nem o acesso aos dados locais.
+
+### Correção necessária antes do preview
+
+A refatoração deve transformar o gate em ponto único de entrada:
+1. O HTML pode carregar a estrutura visual mínima de autenticação, estilos e dependências estritamente necessárias ao login.
+2. Nenhum script de negócio deve executar automaticamente antes da autenticação.
+3. Depois de confirmar sessão válida e o UUID do proprietário autorizado, o gate carrega o código principal.
+4. Se autenticação, rede ou autorização falhar, o código principal não é carregado.
+5. A configuração do backend de teste deve ser injetada separadamente da produção. A URL e a chave pública do Supabase de produção não podem permanecer no artefato de preview.
+6. A mudança deve preservar a ordem atual dos scripts de negócio e ser validada com testes de regressão antes de importar qualquer backup.
+
+**Decisão de segurança:** não fazer uma substituição mecânica de tags `<script>` sem validar escopos, ordem de execução, eventos `DOMContentLoaded`, dependências globais e scripts externos. O código atual é um HTML monolítico; a extração precisa ser feita e testada como refatoração controlada.
