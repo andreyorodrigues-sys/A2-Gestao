@@ -73,3 +73,10 @@ A refatoração deve transformar o gate em ponto único de entrada:
 - Foi verificado no conteúdo atualizado que a URL/ref do projeto de produção e o UUID de produção não permanecem no `index.html` da branch de testes.
 
 **Ainda não é um preview pronto para uso.** A configuração está intencionalmente vazia e o problema estrutural de scripts de negócio executarem antes do gate continua pendente. O próximo passo de código é extrair/carregar o aplicativo somente após a autorização, preservando a ordem e testando dependências. Depois disso, ainda será necessário criar o projeto Supabase exclusivo, preencher `config.js` somente com os dados desse projeto e configurar uma hospedagem de preview independente.
+
+
+## Migration RLS específica para testes
+
+Foi adicionada `supabase/test/001_owner_workspace_test.sql` como modelo separado. Ela usa o marcador `__TEST_OWNER_UUID__`, que deverá ser substituído pelo UUID do usuário administrador criado no Supabase de teste. Assim, a migration de teste não herda o UUID fixo da conta de produção presente em `supabase/migrations/001_owner_workspace.sql`.
+
+A migration-template não foi executada. Não há projeto Supabase de teste conectado nem schema aplicado. Antes de executar, confirmar o UUID da conta de teste, substituir o marcador, revisar o SQL e conferir visualmente o projeto selecionado no painel Supabase. A migration original de produção permanece intocada e também não foi executada.
