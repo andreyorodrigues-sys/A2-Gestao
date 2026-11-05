@@ -499,7 +499,7 @@ body.a2-report-top .app{padding-top:0!important}
 
 <style id="A2_AUTH_GATE_V1">
 /* A2 Auth: bloqueia a interface até validar a sessão do Supabase */
-html.a2-auth-pending .app, html.a2-auth-locked .app { visibility:hidden!important; pointer-events:none!important; }
+html:not(.a2-auth-unlocked) .app { visibility:hidden!important; pointer-events:none!important; }
 #a2AuthRoot{position:fixed;inset:0;z-index:999999;background:#080a0d;color:#f5f6f8;display:grid;place-items:center;padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #a2AuthRoot *{box-sizing:border-box}
 #a2AuthRoot .auth-card{width:min(100%,410px);background:#171a1f;border:1px solid #303640;border-radius:22px;padding:25px;box-shadow:0 20px 70px #0008}
@@ -2853,7 +2853,7 @@ body{background:#080a0d;color:var(--text)}
   const setBusy=v=>{const b=document.getElementById('a2AuthSubmit');if(b){b.disabled=v;b.textContent=v?'Aguarde…':'Entrar no A2 Gestão'}};
   const isOwner=session=>Boolean(session&&session.user&&String(session.user.id).toLowerCase()===OWNER_ID);
   function lockApp(message){
-    document.documentElement.classList.remove('a2-auth-pending');
+    document.documentElement.classList.remove('a2-auth-pending','a2-auth-unlocked');
     document.documentElement.classList.add('a2-auth-locked');
     root.style.display='grid';
     if(message)msg(message);
@@ -2867,7 +2867,7 @@ body{background:#080a0d;color:var(--text)}
       setTimeout(()=>{if(window.a2Supabase)window.a2Supabase.auth.signOut().catch(()=>{});},0);
       return;
     }
-    root.style.display='none';document.documentElement.classList.remove('a2-auth-pending','a2-auth-locked');
+    root.style.display='none';document.documentElement.classList.remove('a2-auth-pending','a2-auth-locked');document.documentElement.classList.add('a2-auth-unlocked');
     const top=document.querySelector('.top');
     if(top&&!document.getElementById('a2AuthLogout')){
       const b=document.createElement('button');b.id='a2AuthLogout';b.type='button';b.textContent='Sair';
