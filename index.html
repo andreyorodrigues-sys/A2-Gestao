@@ -2843,15 +2843,30 @@ body{background:#080a0d;color:var(--text)}
   'use strict';
   document.documentElement.classList.add('a2-auth-pending');
   const PROJECT_URL="https://tpvferieekscatdkrivc.supabase.co";
-  const PUBLIC_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwdmZlcmllZWtzY2F0ZGtyaXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4MjY4MTksImV4cCI6MjEwOTQwMjgxOX0.WjDhzWYGJbMtAgXyfcCCXydxUpL-pBZ3OV0oUjEnimk";
+  const PUBLIC_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwdmZlcmllZWtzYXRjZGtyaXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4MjY4MTksImV4cCI6MjEwOTQwMjgxOX0.WjDhzWYGJbMtAgXyfcCCXydxUpL-pBZ3OV0oUjEnimk";
+  const OWNER_ID="00803aaf-586d-47df-8eb7-a8948eb6490e";
   const root=document.createElement('div');
   root.id='a2AuthRoot';
   root.innerHTML='<div class="auth-card"><div class="auth-brand">A2 · GESTÃO</div><h1>Acesso do administrador</h1><p>Entre com o e-mail e a senha cadastrados no projeto Gestao - A2.</p><form id="a2AuthForm"><label for="a2AuthEmail">E-mail</label><input id="a2AuthEmail" type="email" autocomplete="username" required maxlength="254"><label for="a2AuthPassword">Senha</label><input id="a2AuthPassword" type="password" autocomplete="current-password" required minlength="6"><button id="a2AuthSubmit" type="submit">Entrar no A2 Gestão</button></form><button class="auth-link" id="a2AuthRecover" type="button">Esqueci minha senha</button><div class="auth-message" id="a2AuthMessage" role="status" aria-live="polite">Conectando ao serviço de autenticação…</div><div class="auth-foot">Ambiente privado · A2 Estética Automotiva</div></div>';
   document.body.appendChild(root);
   const msg=t=>{const e=document.getElementById('a2AuthMessage');if(e)e.textContent=t||''};
   const setBusy=v=>{const b=document.getElementById('a2AuthSubmit');if(b){b.disabled=v;b.textContent=v?'Aguarde…':'Entrar no A2 Gestão'}};
+  const isOwner=session=>Boolean(session&&session.user&&String(session.user.id).toLowerCase()===OWNER_ID);
+  function lockApp(message){
+    document.documentElement.classList.remove('a2-auth-pending');
+    document.documentElement.classList.add('a2-auth-locked');
+    root.style.display='grid';
+    if(message)msg(message);
+    setBusy(false);
+  }
   function showApp(session){
-    if(!session){document.documentElement.classList.remove('a2-auth-pending');document.documentElement.classList.add('a2-auth-locked');root.style.display='grid';return;}
+    if(!session){lockApp('Informe seu e-mail e senha para continuar.');return;}
+    if(!isOwner(session)){
+      lockApp('Esta conta não está autorizada a acessar o A2 Gestão.');
+      // Encerra qualquer sessão diferente do proprietário sem bloquear o callback do Auth.
+      setTimeout(()=>{if(window.a2Supabase)window.a2Supabase.auth.signOut().catch(()=>{});},0);
+      return;
+    }
     root.style.display='none';document.documentElement.classList.remove('a2-auth-pending','a2-auth-locked');
     const top=document.querySelector('.top');
     if(top&&!document.getElementById('a2AuthLogout')){
@@ -2869,11 +2884,14 @@ body{background:#080a0d;color:var(--text)}
       const {data,error}=await window.a2Supabase.auth.getSession();
       if(error)throw error;
       showApp(data.session);
-      if(!data.session)msg('Informe seu e-mail e senha para continuar.');
       window.a2Supabase.auth.onAuthStateChange((event,session)=>{
         if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')showApp(session);
         if(event==='SIGNED_OUT')showApp(null);
-        if(event==='PASSWORD_RECOVERY'){showApp(session);setTimeout(()=>{const p=prompt('Digite sua nova senha (mínimo de 8 caracteres):');if(p&&p.length>=8)window.a2Supabase.auth.updateUser({password:p}).then(({error})=>alert(error?'Não foi possível atualizar: '+error.message:'Senha atualizada.'));},250);}
+        if(event==='PASSWORD_RECOVERY'){
+          if(!isOwner(session)){showApp(session);return;}
+          showApp(session);
+          setTimeout(()=>{const p=prompt('Digite sua nova senha (mínimo de 8 caracteres):');if(p&&p.length>=8)window.a2Supabase.auth.updateUser({password:p}).then(({error})=>alert(error?'Não foi possível atualizar: '+error.message:'Senha atualizada.'));},250);
+        }
       });
     }catch(e){document.documentElement.classList.remove('a2-auth-pending');document.documentElement.classList.add('a2-auth-locked');msg('Falha ao conectar à autenticação: '+(e.message||'erro desconhecido'));}
   };
@@ -2883,7 +2901,16 @@ body{background:#080a0d;color:var(--text)}
     ev.preventDefault();if(!window.a2Supabase){msg('A autenticação ainda está carregando.');return;}
     const email=document.getElementById('a2AuthEmail').value.trim(),password=document.getElementById('a2AuthPassword').value;
     setBusy(true);msg('Validando acesso…');
-    try{const {data,error}=await window.a2Supabase.auth.signInWithPassword({email,password});if(error)throw error;if(!data.session)throw new Error('A sessão não foi confirmada.');msg('Acesso autorizado.');}
+    try{
+      const {data,error}=await window.a2Supabase.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      if(!data.session)throw new Error('A sessão não foi confirmada.');
+      if(!isOwner(data.session)){
+        await window.a2Supabase.auth.signOut();
+        throw new Error('Esta conta não está autorizada a acessar o A2 Gestão.');
+      }
+      msg('Acesso autorizado.');
+    }
     catch(e){msg(e.message==='Invalid login credentials'?'E-mail ou senha incorretos.':(e.message||'Não foi possível entrar.'));setBusy(false);}
   });
   document.getElementById('a2AuthRecover').addEventListener('click',async()=>{
