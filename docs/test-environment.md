@@ -63,3 +63,13 @@ A refatoração deve transformar o gate em ponto único de entrada:
 6. A mudança deve preservar a ordem atual dos scripts de negócio e ser validada com testes de regressão antes de importar qualquer backup.
 
 **Decisão de segurança:** não fazer uma substituição mecânica de tags `<script>` sem validar escopos, ordem de execução, eventos `DOMContentLoaded`, dependências globais e scripts externos. O código atual é um HTML monolítico; a extração precisa ser feita e testada como refatoração controlada.
+
+
+## Progresso aplicado na branch de testes
+
+- Criado `config.js` com campos vazios para URL, chave pública (`anonKey`) e UUID do proprietário do Supabase de teste.
+- O `index.html` agora lê essas três configurações de `window.A2_SUPABASE_CONFIG`, em vez de carregar a URL, a chave pública e o UUID do projeto de produção.
+- Se qualquer campo estiver vazio, o gate mantém o acesso bloqueado e não inicializa o cliente Supabase.
+- Foi verificado no conteúdo atualizado que a URL/ref do projeto de produção e o UUID de produção não permanecem no `index.html` da branch de testes.
+
+**Ainda não é um preview pronto para uso.** A configuração está intencionalmente vazia e o problema estrutural de scripts de negócio executarem antes do gate continua pendente. O próximo passo de código é extrair/carregar o aplicativo somente após a autorização, preservando a ordem e testando dependências. Depois disso, ainda será necessário criar o projeto Supabase exclusivo, preencher `config.js` somente com os dados desse projeto e configurar uma hospedagem de preview independente.
