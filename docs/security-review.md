@@ -65,3 +65,15 @@ Correção esperada após validar a regra de composição:
 - alinhar o vínculo reverso `budget.orderId` ao ID real da OS `musvw8195ndj9`, mantendo `order.budgetId` apontando para o orçamento `musvw5fahndn9`;
 - manter o backup original intocado e gerar uma cópia corrigida separada, com novo checksum e relatório de alterações;
 - não sobrescrever dados de produção nem importar automaticamente.
+
+
+### Cópia de backup corrigida — sem importação
+
+Foi gerada uma cópia separada do arquivo enviado, mantendo o original intacto. Nessa cópia, a OS A2-0001 foi alinhada ao orçamento aprovado:
+- Total da OS: R$ 600,00.
+- Serviço e composição copiados do orçamento: “Higienização + Polimento (lojista)”.
+- `budget.orderId` alinhado ao ID real da OS.
+- `order.budgetId` preservado apontando para o orçamento.
+- Checksum FNV-1a-32 recalculado e verificado: `e58df348`.
+
+A cópia corrigida ainda NÃO foi importada no aplicativo nem no Supabase. O arquivo contém os dados originais do restante do backup; a única alteração de conteúdo foi a correção da relação orçamento/OS A2-0001 e seu valor/composição correspondentes.
