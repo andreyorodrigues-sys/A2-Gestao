@@ -47,7 +47,7 @@ A inspeção do `index.html` desta branch confirmou que o endereço e a chave p�
 
 Na revisão do arquivo `index.html` da branch de testes:
 - O arquivo tem 2.955 linhas e aproximadamente 432 KB.
-- Foram encontrados 14 elementos `<script>`: 12 blocos inline de funcionalidades, uma biblioteca externa de PDF e o bloco de autenticação.
+- Foram identificados 13 elementos `<script>` reais no HTML: 12 blocos inline de funcionalidades e o bloco inline de autenticação. Um trecho adicional com `<script>` aparece dentro de uma string/template de HTML para geração de PDF e não é executado como elemento da página atual.
 - O bloco `A2_AUTH_GATE_V1` está no final do documento (linha 2.869), depois dos blocos que inicializam funcionalidades.
 - Há leituras e gravações de `localStorage` em blocos anteriores ao gate, incluindo leitura de configurações e dados, backup e renderização.
 - Portanto, ocultar a interface por CSS não impede a execução desses scripts nem o acesso aos dados locais.
