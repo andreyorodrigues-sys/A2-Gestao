@@ -550,7 +550,7 @@ html:not(.a2-auth-unlocked) .app { visibility:hidden!important; pointer-events:n
 <div class="note" style="margin-top:14px">Importante: o backup deve ser baixado e guardado fora do navegador, de preferência no iCloud Drive ou em outro local seguro. Não apague os dados do navegador nem desinstale o aplicativo da tela inicial.</div>
 </section><section class="view" id="detail"><button class="back" onclick="go('clientes')">‹ Voltar</button><div id="detailContent"></div></section>
 <section class="view" id="certificado"><button class="back" onclick="go('ordens')">‹ Voltar</button><h1>Certificado A2</h1><div class="sub">Documento do serviço realizado</div><div id="certificateContent"></div></section><section class="view" id="form"><button class="back" onclick="go('home')">‹ Voltar</button><h1 id="formTitle">Novo cadastro</h1><div class="sub">Preencha os dados principais</div><form class="form" onsubmit="saveForm(event)"><div id="fields"></div><div class="a2-form-actions"><button class="primary">SALVAR</button><button class="secondary" onclick="go('ordens')" type="button">← VOLTAR</button></div></form></section>
-<div class="note">A2 Gestão V9.4 • CRM e Pós-venda aprimorados • Não é só estética, é experiência.</div></main><nav class="nav"><button class="active" onclick="go('home',this)"><i>⌂</i>Início</button><button onclick="go('agenda',this)"><i>◷</i>Agenda</button><button onclick="go('clientes',this)"><i>♙</i>Cadastros</button><button onclick="go('financeiro',this)"><i>R$</i>Financeiro</button><button onclick="go('mais',this)"><i>☰</i>Mais</button></nav><div class="toast" id="toast">Salvo com sucesso</div><div id="a2OrderPrint"></div><script>
+<div class="note">A2 Gestão V9.4 • CRM e Pós-venda aprimorados • Não é só estética, é experiência.</div></main><nav class="nav"><button class="active" onclick="go('home',this)"><i>⌂</i>Início</button><button onclick="go('agenda',this)"><i>◷</i>Agenda</button><button onclick="go('clientes',this)"><i>♙</i>Cadastros</button><button onclick="go('financeiro',this)"><i>R$</i>Financeiro</button><button onclick="go('mais',this)"><i>☰</i>Mais</button></nav><div class="toast" id="toast">Salvo com sucesso</div><div id="a2OrderPrint"></div><script type="application/x-a2-gated" data-a2-gated="1">
 const A2_STORAGE_VERSION='7';
 const A2_KEYS=['a2clients','a2vehicles','a2services','a2budgets','a2agenda','a2orders','a2history','a2receivables','a2payments','a2transactions','a2crmActivities','a2maintenance','a2payables','a2recurring','a2serviceCosts','a2accounts','a2goals'];
 const A2_SETTING_KEYS=['a2templates','a2pix','a2RevenuePeriod','a2RevenueStart','a2RevenueEnd','a2RevenueHidden','a2GoogleReviewUrl'];
@@ -1022,7 +1022,7 @@ renderHome();renderClients();renderVehicles();renderServices();renderFinance();
 .a2-enhance{margin-top:14px;padding:14px;border:1px solid #2a2d33;border-radius:14px;background:#121419}.a2-enhance h3{margin:0 0 8px}.a2-enhance .muted{font-size:12px;opacity:.7}.a2-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.a2-grid label{display:block}.a2-grid input,.a2-grid select,.a2-grid textarea{width:100%;box-sizing:border-box}.a2-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.a2-report{white-space:pre-wrap;background:#0e1014;border:1px solid #2a2d33;border-radius:12px;padding:12px;font-size:13px;line-height:1.5}.a2-table{width:100%;border-collapse:collapse;font-size:13px}.a2-table th,.a2-table td{padding:8px;border-bottom:1px solid #292c32;text-align:left}.a2-table th{opacity:.75}.a2-pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#242830;font-size:11px}.a2-pix{font-weight:700}.a2-service-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.a2-service-prices label{font-size:12px}.a2-service-prices input{margin-top:4px}
 @media(max-width:600px){.a2-grid,.a2-service-prices{grid-template-columns:1fr}}
 </style>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 // ===== A2 Gestão — camada de ajustes 29/09/2026 =====
 (function(){
   const cats=['Hatch','Sedan','SUV','Caminhonete','Moto','Outros'];
@@ -1412,7 +1412,7 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
   .budget-service-row .budget-remove{width:32px!important;height:32px!important}
 }
 </style>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 // A2 — comando seguro de Orçamento -> Ordem de Serviço
 window.a2GerarOSSeguro=function(id){
   let criadoId='';
@@ -1460,11 +1460,11 @@ window.a2AgendarSeguro=function(id){
   }catch(err){console.error('A2 agendar:',err);alert('Não foi possível agendar. Tente novamente.');}
 };
 </script>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 (function(){function refreshA2Home(){try{a2UpdateGreeting();if(document.getElementById('home')?.classList.contains('active'))renderHome()}catch(e){}}window.addEventListener('pageshow',refreshA2Home);window.addEventListener('focus',refreshA2Home);document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshA2Home()});setInterval(refreshA2Home,60000);})();
 </script>
 
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 (function(){
   const todayISO=()=>new Date().toISOString().slice(0,10);
   const parseDate=v=>{if(!v)return null;if(/^\d{4}-\d{2}-\d{2}/.test(String(v))){const d=new Date(String(v).slice(0,10)+'T12:00:00');return isNaN(d)?null:d;}const m=String(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1],12);const d=new Date(v);return isNaN(d)?null:d;};
@@ -1500,7 +1500,7 @@ window.a2AgendarSeguro=function(id){
   document.addEventListener('DOMContentLoaded',()=>{const n=document.querySelector('.note');if(n)n.textContent='A2 Gestão V8 • Proteção de Dados + Financeiro + CRM e pós-venda • Não é só estética, é experiência.';});
 })();
 </script>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 /* A2 GESTAO V9 - extensoes integradas sobre a V8 */
 (function(){
 'use strict';
@@ -1583,7 +1583,7 @@ window.a2V9Ready=true;
 .a2-agenda-add-service{width:100%;margin-top:2px}
 @media(max-width:380px){.a2-agenda-service-row{grid-template-columns:minmax(0,1fr) 76px 30px;gap:5px}.a2-agenda-service-value{font-size:12px}.a2-agenda-remove{width:30px!important}}
 </style>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 (function(){
   // ===== Numeração sequencial das OS: A2-0001, A2-0002... =====
   function osNumberValue(o){
@@ -1903,7 +1903,7 @@ window.a2V9Ready=true;
   };
 })();
 </script>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 /* A2 OS FINAL LAYOUT - cabeçalho, vistoria, fotos, PDF sem financeiro */
 (function(){
   const escA2 = window.esc || (v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])));
@@ -2081,7 +2081,7 @@ window.a2V9Ready=true;
   `;document.head.appendChild(st);
 })();
 </script>
-<script>
+<script type="application/x-a2-gated" data-a2-gated="1">
 /* A2 Gestão — correções finais da OS
    1) um único SALVAR OS
    2) fotos gerais + fotos dos itens do checklist persistentes
@@ -2326,7 +2326,7 @@ window.a2V9Ready=true;
 })();
 </script>
 
-<script id="a2-save-edit-fix-final">
+<script type="application/x-a2-gated" data-a2-gated="1" id="a2-save-edit-fix-final">
 // A2 Gestão — correção definitiva dos comandos SALVAR em edição
 // Cliente, Veículo e Agendamento. Este bloco fica por último para assumir
 // o comando do formulário sem alterar as demais rotinas do aplicativo.
@@ -2780,7 +2780,7 @@ function saveCatalogPDF(){
 @media(max-width:520px){#a2CrmRoot .crm-hero{padding:21px 19px}#a2CrmRoot .crm-kpi{padding:12px}#a2CrmRoot .crm-kpi strong{font-size:24px}#a2CrmRoot .crm-nav{top:4px}}
 
 </style>
-<script id="a2-crm-modern-render">
+<script type="application/x-a2-gated" data-a2-gated="1" id="a2-crm-modern-render">
 (function(){
   const escCRM=v=>typeof esc==='function'?esc(v??''):String(v??'');
   const moneyCRM=v=>typeof money==='function'?money(Number(v||0)):'R$ '+Number(v||0).toFixed(2);
@@ -2889,14 +2889,28 @@ body{background:#080a0d;color:var(--text)}
     if(message)msg(message);
     setBusy(false);
   }
-  function showApp(session){
+  let appScriptsLoaded=false;
+  async function activateAppScripts(){
+    if(appScriptsLoaded)return;
+    const inert=[...document.querySelectorAll('script[data-a2-gated="1"]')];
+    for(const original of inert){
+      const active=document.createElement('script');
+      if(original.id)active.id=original.id;
+      active.textContent=original.textContent;
+      document.body.appendChild(active);
+    }
+    document.dispatchEvent(new Event('DOMContentLoaded',{bubbles:true}));
+    appScriptsLoaded=true;
+  }
+  async function showApp(session){
     if(!session){lockApp('Informe seu e-mail e senha para continuar.');return;}
     if(!isOwner(session)){
       lockApp('Esta conta não está autorizada a acessar o A2 Gestão.');
-      // Encerra qualquer sessão diferente do proprietário sem bloquear o callback do Auth.
       setTimeout(()=>{if(window.a2Supabase)window.a2Supabase.auth.signOut().catch(()=>{});},0);
       return;
     }
+    try{await activateAppScripts();}
+    catch(e){lockApp('Não foi possível inicializar o aplicativo: '+(e.message||'erro desconhecido'));return;}
     root.style.display='none';document.documentElement.classList.remove('a2-auth-pending','a2-auth-locked');document.documentElement.classList.add('a2-auth-unlocked');
     const top=document.querySelector('.top');
     if(top&&!document.getElementById('a2AuthLogout')){
@@ -2917,7 +2931,7 @@ body{background:#080a0d;color:var(--text)}
       window.a2Supabase=window.supabase.createClient(PROJECT_URL,PUBLIC_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
       const {data,error}=await window.a2Supabase.auth.getSession();
       if(error)throw error;
-      showApp(data.session);
+      await showApp(data.session);
       window.a2Supabase.auth.onAuthStateChange((event,session)=>{
         if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')showApp(session);
         if(event==='SIGNED_OUT')showApp(null);
@@ -2943,6 +2957,7 @@ body{background:#080a0d;color:var(--text)}
         await window.a2Supabase.auth.signOut();
         throw new Error('Esta conta não está autorizada a acessar o A2 Gestão.');
       }
+      await showApp(data.session);
       msg('Acesso autorizado.');
     }
     catch(e){msg(e.message==='Invalid login credentials'?'E-mail ou senha incorretos.':(e.message||'Não foi possível entrar.'));setBusy(false);}
