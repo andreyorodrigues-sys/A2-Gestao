@@ -20,8 +20,10 @@ Manter o A2 Gestão como aplicação privada de uma única pessoa administradora
 
 ## Estado desta branch
 
-- O login Supabase está integrado ao `index.html`.
-- A tela deve permanecer bloqueada para sessões ausentes ou para qualquer UUID diferente do proprietário.
+- O login Supabase está integrado ao `index.html`, mas ainda NÃO é considerado uma barreira de segurança concluída.
+- Na revisão estática, o script principal do aplicativo aparece e executa antes do script `A2_AUTH_GATE_V1`, que está próximo do fim do documento. Portanto, dados do `localStorage` podem ser lidos e carregados antes da validação da sessão.
+- A classe CSS que esconde `.app` impede a interação visual normal, mas não protege os dados locais nem impede a execução prévia do JavaScript.
+- A tela deve permanecer bloqueada para sessões ausentes ou para qualquer UUID diferente do proprietário; isso é um controle de interface, não uma proteção suficiente do armazenamento local.
 - A migration SQL foi preparada com políticas RLS restritas ao UUID acima.
 - A migration ainda precisa ser executada no projeto Supabase e testada.
 - A aplicação ainda mantém os cadastros no `localStorage`; sincronização com a nuvem e importação de dados ainda não foram habilitadas.
@@ -41,7 +43,9 @@ Manter o A2 Gestão como aplicação privada de uma única pessoa administradora
 
 ## Limites e segurança
 
-- A autenticação do frontend impede o uso normal da interface por outra conta, mas não transforma o `localStorage` do navegador em armazenamento criptografado. Quem tiver acesso ao perfil do navegador/dispositivo poderá inspecionar os dados locais.
+- A autenticação do frontend atual ainda não impede de forma confiável a execução da aplicação antes do login: o script principal roda antes do gate. Não apresentar esta implementação como segurança concluída.
+- O `localStorage` do navegador não é armazenamento criptografado. Quem tiver acesso ao perfil do navegador/dispositivo poderá inspecionar os dados locais.
+- A revisão técnica detalhada e os bloqueios de aceite estão em `docs/security-review.md`.
 - A RLS protege a tabela remota mesmo que alguém ignore a tela de login e tente chamar a API diretamente.
 - Nunca armazenar senha no A2 nem criar JWT manualmente.
 - Tokens ficam sob gestão da biblioteca oficial do Supabase.
