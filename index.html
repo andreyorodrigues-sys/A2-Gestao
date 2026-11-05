@@ -2866,13 +2866,15 @@ body{background:#080a0d;color:var(--text)}
 </style>
 
 
+<script src="./config.js"></script>
 <script id="A2_AUTH_GATE_V1">
 (function(){
   'use strict';
   document.documentElement.classList.add('a2-auth-pending');
-  const PROJECT_URL="https://tpvferieekscatdkrivc.supabase.co";
-  const PUBLIC_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwdmZlcmllZWtzY2F0ZGtyaXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4MjY4MTksImV4cCI6MjEwOTQwMjgxOX0.WjDhzWYGJbMtAgXyfcCCXydxUpL-pBZ3OV0oUjEnimk";
-  const OWNER_ID="00803aaf-586d-47df-8eb7-a8948eb6490e";
+  const cfg=window.A2_SUPABASE_CONFIG||{};
+  const PROJECT_URL=String(cfg.url||'').trim();
+  const PUBLIC_KEY=String(cfg.anonKey||'').trim();
+  const OWNER_ID=String(cfg.ownerId||'').trim().toLowerCase();
   const root=document.createElement('div');
   root.id='a2AuthRoot';
   root.innerHTML='<div class="auth-card"><div class="auth-brand">A2 · GESTÃO</div><h1>Acesso do administrador</h1><p>Entre com o e-mail e a senha cadastrados no projeto Gestao - A2.</p><form id="a2AuthForm"><label for="a2AuthEmail">E-mail</label><input id="a2AuthEmail" type="email" autocomplete="username" required maxlength="254"><label for="a2AuthPassword">Senha</label><input id="a2AuthPassword" type="password" autocomplete="current-password" required minlength="6"><button id="a2AuthSubmit" type="submit">Entrar no A2 Gestão</button></form><button class="auth-link" id="a2AuthRecover" type="button">Esqueci minha senha</button><div class="auth-message" id="a2AuthMessage" role="status" aria-live="polite">Conectando ao serviço de autenticação…</div><div class="auth-foot">Ambiente privado · A2 Estética Automotiva</div></div>';
@@ -2902,6 +2904,10 @@ body{background:#080a0d;color:var(--text)}
       b.addEventListener('click',async()=>{b.disabled=true;msg('Encerrando sessão…');const {error}=await window.a2Supabase.auth.signOut();if(error){b.disabled=false;alert('Não foi possível encerrar a sessão: '+error.message)}});
       top.appendChild(b);
     }
+  }
+  if(!PROJECT_URL||!PUBLIC_KEY||!OWNER_ID){
+    lockApp('Ambiente de testes não configurado. Defina URL, chave pública e UUID do proprietário do projeto Supabase exclusivo de testes.');
+    return;
   }
   const cdn=document.createElement('script');
   cdn.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
