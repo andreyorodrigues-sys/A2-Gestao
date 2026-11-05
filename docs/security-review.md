@@ -52,3 +52,16 @@ Uma simples mudança de CSS ou a ocultação do menu não atende a esses requisi
 ## Estado desta revisão
 
 A revisão é estática. Não houve teste de navegador, não houve execução de SQL e não houve alteração de produção. A autenticação permanece bloqueada para publicação até a correção arquitetural e os testes acima.
+
+
+## Confirmação do proprietário — orçamento/OS A2-0001
+
+O proprietário confirmou que o valor correto a preservar é **R$ 600,00**, conforme o orçamento aprovado. Portanto, a OS A2-0001 não deve permanecer em R$ 350,00.
+
+A correção de dados ainda não foi aplicada. Antes de editar o backup ou implementar reparo automático, conferir a composição dos serviços na OS: o orçamento registra “Higienização + Polimento (lojista)” por R$ 600, enquanto a OS registra “Higienização Detalhada” por R$ 350. Não atualizar apenas o total e deixar a soma dos itens divergente.
+
+Correção esperada após validar a regra de composição:
+- preservar o total aprovado de R$ 600,00 na OS;
+- alinhar o vínculo reverso `budget.orderId` ao ID real da OS `musvw8195ndj9`, mantendo `order.budgetId` apontando para o orçamento `musvw5fahndn9`;
+- manter o backup original intocado e gerar uma cópia corrigida separada, com novo checksum e relatório de alterações;
+- não sobrescrever dados de produção nem importar automaticamente.
