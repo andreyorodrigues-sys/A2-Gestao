@@ -704,7 +704,7 @@ async function a2ImportBackup(event){
 async function a2CheckIntegrity(){
   const el=document.getElementById('a2IntegrityStatus');
   if(!el)return;
-  const keys=['a2clients','a2vehicles','a2services','a2budgets','a2agenda','a2orders','a2history','a2receivables','a2payments','a2transactions','a2crmActivities','a2maintenance','a2payables','a2recurring','a2serviceCosts','a2accounts','a2goals'];
+  const keys=['a2clients','a2vehicles','a2services','a2budgets','a2agenda','a2orders','a2history','a2receivables','a2payments','a2transactions','a2crmActivities','a2maintenance','a2payables','a2recurring','a2serviceCosts','a2accounts','a2goals','a2inventory','a2stockMoves','a2approvals'];
   const data=a2BackupSnapshot().data,problems=[],warnings=[],summary=[];
   let totalRecords=0,totalBytes=0,photoReferences=0,invalidPhotoReferences=0;
   const photoSet=new Set();
@@ -776,11 +776,11 @@ async function a2CheckIntegrity(){
       try{
         const backup=JSON.parse(backupRaw);
         const backupData=backup&&backup.data&&typeof backup.data==='object'?backup.data:backup;
-        const missing=keys.filter(k=>!Array.isArray(backupData?.[k]));
+        const missing=A2_KEYS.filter(k=>!Array.isArray(backupData?.[k]));
         if(missing.length){backupState='incompleto ('+missing.join(', ')+')';warnings.push('Backup interno sem todas as categorias: '+missing.join(', ')+'.');}
         else{
-          backupState='legível; categorias presentes';
-          const backupCount=keys.reduce((n,k)=>n+backupData[k].length,0);
+          backupState='legível; categorias principais presentes';
+          const backupCount=A2_KEYS.reduce((n,k)=>n+backupData[k].length,0);
           if(backupCount===0)warnings.push('Backup interno está vazio.');
         }
       }catch(e){backupState='JSON inválido';problems.push('Backup interno não pode ser lido como JSON.');}
