@@ -1,10 +1,10 @@
 /* A2 Gestão — configuração exclusiva do ambiente de testes.
-   Preencha somente com dados do projeto Supabase de TESTE.
-   Nunca reutilize URL, anon key ou UUID de produção.
-   A chave anon é pública; nunca coloque service_role, senha ou tokens aqui.
+   Use somente dados do projeto Supabase A2-Gestao-Testes.
+   A chave publishable é própria para uso no navegador.
+   Nunca coloque service_role, secret key, senha ou tokens aqui.
 */
 window.A2_SUPABASE_CONFIG = {
-  url: '',
-  anonKey: '',
+  url: 'https://zqkigankrntloqlccoqf.supabase.co',
+  anonKey: 'sb_publishable_8sT4rA1s7SOfibbubaByJQ_hW7E1dCu',
   ownerId: ''
 };
