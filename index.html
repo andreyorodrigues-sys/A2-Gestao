@@ -496,7 +496,26 @@ body.a2-report-top .app{padding-top:0!important}
   #home .a2-resumo-grid .stat .label{font-size:9px!important;height:21px!important;min-height:21px!important}
 }
 </style>
-</head><body><main class="app">
+
+<style id="A2_AUTH_GATE_V1">
+/* A2 Auth: bloqueia a interface até validar a sessão do Supabase */
+html:not(.a2-auth-unlocked) .app { visibility:hidden!important; pointer-events:none!important; }
+#a2AuthRoot{position:fixed;inset:0;z-index:999999;background:#080a0d;color:#f5f6f8;display:grid;place-items:center;padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#a2AuthRoot *{box-sizing:border-box}
+#a2AuthRoot .auth-card{width:min(100%,410px);background:#171a1f;border:1px solid #303640;border-radius:22px;padding:25px;box-shadow:0 20px 70px #0008}
+#a2AuthRoot .auth-brand{font-size:13px;letter-spacing:2px;font-weight:900;color:#ff852b}
+#a2AuthRoot h1{font-size:25px;margin:12px 0 5px;color:#fff}
+#a2AuthRoot p{font-size:13px;line-height:1.5;color:#a0a6af;margin:0 0 18px}
+#a2AuthRoot label{display:block;font-size:12px;font-weight:700;color:#c9cdd3;margin:13px 0 6px}
+#a2AuthRoot input{width:100%;min-height:47px;border:1px solid #3a414b;border-radius:12px;background:#0e1115;color:#fff;padding:12px;font:inherit;outline:none}
+#a2AuthRoot input:focus{border-color:#ff852b;box-shadow:0 0 0 3px #ff852b22}
+#a2AuthRoot button{width:100%;min-height:46px;border:0;border-radius:12px;background:linear-gradient(135deg,#ff852b,#f36b13);color:#17110c;font-weight:850;margin-top:17px;cursor:pointer}
+#a2AuthRoot button:disabled{opacity:.6;cursor:wait}
+#a2AuthRoot .auth-link{display:block;width:100%;border:0;background:transparent;color:#ffad72;font-size:12px;margin-top:12px;min-height:35px}
+#a2AuthRoot .auth-message{min-height:20px;margin-top:13px;font-size:12px;color:#ffbd91;overflow-wrap:anywhere}
+#a2AuthRoot .auth-foot{font-size:10px;color:#777f89;margin-top:16px;text-align:center}
+#a2AuthLogout{border:1px solid #6d452e!important;background:#2a201a!important;color:#ffad72!important;border-radius:10px!important;padding:7px 10px!important;font-size:11px!important;font-weight:700!important;min-height:32px!important;width:auto!important;margin:0 0 0 8px!important}
+</style></head><body><main class="app">
 <header class="top"><div class="brand">A2 <span>GESTÃO</span></div><div class="avatar">A</div></header>
 <section class="view active" id="home">
 <div class="home-head"><div><div class="eyebrow">PAINEL DE COMANDO</div><h1 id="homeGreeting">Bom dia, Andrei</h1><div class="sub">Tudo o que você precisa para acompanhar a A2 hoje.</div></div></div>
@@ -525,7 +544,7 @@ body.a2-report-top .app{padding-top:0!important}
 <section class="view" id="mais"><h1>Mais</h1><div class="sub">Todos os módulos do A2 Gestão</div><div class="module-grid"><button class="module" onclick="setCadastro('clientes');go('clientes')"><b>👥</b><span>Clientes</span></button><button class="module" onclick="setCadastro('veiculos');go('clientes')"><b>🚗</b><span>Veículos</span></button><button class="module" onclick="setCadastro('servicos');go('clientes')"><b>🧽</b><span>Serviços</span></button><button class="module" onclick="go('orcamentos')"><b>💰</b><span>Orçamentos</span></button><button class="module" onclick="go('ordens')"><b>📋</b><span>Ordens de Serviço</span></button><button class="module" onclick="go('agenda')"><b>📅</b><span>Agenda</span></button><button class="module" onclick="go('whatsapp')"><b>💬</b><span>WhatsApp</span></button><button class="module" onclick="go('financeiro')"><b>💵</b><span>Financeiro</span></button><button class="module" onclick="go('crm')"><b>🤝</b><span>CRM e pós-venda</span></button><button class="module" onclick="go('historico')"><b>📚</b><span>Histórico</span></button><button class="module" onclick="go('relatorios')"><b>📊</b><span>Relatórios</span></button><button class="module" onclick="go('seguranca')"><b>🛡️</b><span>Segurança e Backup</span></button></div></section>
 <section class="view" id="seguranca"><button class="back" onclick="go('mais')">‹ Voltar</button><h1>Segurança e Backup</h1><div class="sub">Proteção dos dados do A2 Gestão antes das próximas atualizações</div>
 <div class="item"><div><h3>Backup completo V8</h3><p>Inclui os 17 grupos de registros, fotos vinculadas às OS e configurações da A2 (modelos de WhatsApp, chave Pix, preferências do faturamento e link de avaliação). O arquivo novo contém verificação de integridade.</p></div></div>
-<div class="actions" style="display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0"><button class="primary" type="button" onclick="a2ExportBackup()">⬇️ EXPORTAR BACKUP COMPLETO</button><button class="secondary" type="button" onclick="document.getElementById('a2BackupFile').click()">⬆️ RESTAURAR DE UM ARQUIVO</button><input id="a2BackupFile" type="file" accept=".json,application/json" style="display:none" onchange="a2ImportBackup(event)"><button class="secondary" type="button" onclick="a2CheckStorage()">▣ VERIFICAR ARMAZENAMENTO</button><button class="secondary" type="button" onclick="a2CheckIntegrity()">✓ VERIFICAR INTEGRIDADE DOS DADOS</button></div><div class="item"><div><h3>Integridade dos dados</h3><p id="a2IntegrityStatus" role="status" aria-live="polite">Verificação ainda não executada. Esta rotina apenas lê os dados; não altera nem apaga registros.</p></div></div>
+<div class="actions" style="display:grid;grid-template-columns:1fr;gap:10px;margin:14px 0"><button class="primary" type="button" onclick="a2ExportBackup()">⬇️ EXPORTAR BACKUP COMPLETO</button><button class="secondary" type="button" onclick="document.getElementById('a2ValidateBackupFile').click()">✓ VALIDAR ARQUIVO DE BACKUP (SEM RESTAURAR)</button><input id="a2ValidateBackupFile" type="file" accept=".json,application/json" style="display:none" onchange="a2ValidateBackupFile(event)"><button class="secondary" type="button" onclick="document.getElementById('a2BackupFile').click()">⬆️ RESTAURAR DE UM ARQUIVO</button><input id="a2BackupFile" type="file" accept=".json,application/json" style="display:none" onchange="a2ImportBackup(event)"><button class="secondary" type="button" onclick="a2CheckStorage()">▣ VERIFICAR ARMAZENAMENTO</button><button class="secondary" type="button" onclick="a2CheckIntegrity()">✓ VERIFICAR INTEGRIDADE DOS DADOS</button></div><div class="item"><div><h3>Integridade dos dados</h3><p id="a2IntegrityStatus" role="status" aria-live="polite">Verificação ainda não executada. Esta rotina apenas lê os dados; não altera nem apaga registros.</p></div></div>
 <div class="item"><div><h3>Estado do armazenamento</h3><p id="a2StorageStatus">Ainda não verificado neste dispositivo.</p></div></div>
 <div class="item"><div><h3>Última verificação</h3><p id="a2BackupStatus" role="status" aria-live="polite">Nenhum backup foi gerado nesta sessão.</p></div></div>
 <div class="note" style="margin-top:14px">Importante: o backup deve ser baixado e guardado fora do navegador, de preferência no iCloud Drive ou em outro local seguro. Não apague os dados do navegador nem desinstale o aplicativo da tela inicial.</div>
@@ -685,7 +704,7 @@ async function a2ImportBackup(event){
 async function a2CheckIntegrity(){
   const el=document.getElementById('a2IntegrityStatus');
   if(!el)return;
-  const keys=['a2clients','a2vehicles','a2services','a2budgets','a2agenda','a2orders','a2history','a2receivables','a2payments','a2transactions','a2crmActivities','a2maintenance','a2payables','a2recurring','a2serviceCosts','a2accounts','a2goals'];
+  const keys=['a2clients','a2vehicles','a2services','a2budgets','a2agenda','a2orders','a2history','a2receivables','a2payments','a2transactions','a2crmActivities','a2maintenance','a2payables','a2recurring','a2serviceCosts','a2accounts','a2goals','a2inventory','a2stockMoves','a2approvals'];
   const data=a2BackupSnapshot().data,problems=[],warnings=[],summary=[];
   let totalRecords=0,totalBytes=0,photoReferences=0,invalidPhotoReferences=0;
   const photoSet=new Set();
@@ -757,11 +776,11 @@ async function a2CheckIntegrity(){
       try{
         const backup=JSON.parse(backupRaw);
         const backupData=backup&&backup.data&&typeof backup.data==='object'?backup.data:backup;
-        const missing=keys.filter(k=>!Array.isArray(backupData?.[k]));
+        const missing=A2_KEYS.filter(k=>!Array.isArray(backupData?.[k]));
         if(missing.length){backupState='incompleto ('+missing.join(', ')+')';warnings.push('Backup interno sem todas as categorias: '+missing.join(', ')+'.');}
         else{
-          backupState='legível; categorias presentes';
-          const backupCount=keys.reduce((n,k)=>n+backupData[k].length,0);
+          backupState='legível; categorias principais presentes';
+          const backupCount=A2_KEYS.reduce((n,k)=>n+backupData[k].length,0);
           if(backupCount===0)warnings.push('Backup interno está vazio.');
         }
       }catch(e){backupState='JSON inválido';problems.push('Backup interno não pode ser lido como JSON.');}
@@ -1493,6 +1512,34 @@ function saveExtra(){put('a2inventory',inventory);put('a2stockMoves',stockMoves)
 const oldSnapshot=window.a2BackupSnapshot;
 window.a2BackupSnapshot=function(){const s=oldSnapshot();s.data.a2inventory=inventory;s.data.a2stockMoves=stockMoves;s.data.a2approvals=approvals;s.manifest.dataCategories=Object.keys(s.data).length;s.manifest.recordCounts=Object.fromEntries(Object.entries(s.data).map(([k,v])=>[k,v.length]));s.manifest.checksum=a2Checksum({data:s.data,settings:s.settings});s.backupVersion=3;return s};
 window.a2ExportBackup=function(){try{const s=window.a2BackupSnapshot(),json=JSON.stringify(s);if(!json||json.length<20)throw Error('Backup vazio');const stamp=new Date().toISOString().replace(/[:.]/g,'-');a2DownloadJson(s,'A2_Gestao_V9_Backup_'+stamp+'.json');a2BackupStatus('Backup V9 exportado. '+Object.values(s.data).reduce((n,a)=>n+a.length,0)+' registros em '+Object.keys(s.data).length+' categorias. Guarde uma cópia fora do dispositivo.')}catch(e){alert('Falha no backup: '+e.message)}};
+window.a2ValidateBackupFile=async function(ev){
+  const input=ev&&ev.target,file=input&&input.files&&input.files[0];
+  if(input)input.value='';
+  if(!file)return;
+  const status=document.getElementById('a2BackupStatus');
+  const report=msg=>{if(status)status.textContent=msg};
+  try{
+    if(file.size>150*1024*1024)throw Error('Arquivo acima de 150 MB.');
+    const obj=JSON.parse(await file.text());
+    if(!obj||obj.format!=='a2-backup'||!obj.data||typeof obj.data!=='object'||Array.isArray(obj.data))throw Error('O arquivo não tem o formato de backup do A2 Gestão.');
+    const required=[...A2_KEYS,...NEW_KEYS],missing=required.filter(k=>!Array.isArray(obj.data[k]));
+    if(missing.length)throw Error('Categorias ausentes ou inválidas: '+missing.join(', ')+'.');
+    const invalid=required.filter(k=>obj.data[k].some(x=>!x||typeof x!=='object'||Array.isArray(x)));
+    if(invalid.length)throw Error('Há registros inválidos nas categorias: '+invalid.join(', ')+'.');
+    if(!obj.settings||typeof obj.settings!=='object'||Array.isArray(obj.settings))throw Error('Bloco de configurações ausente ou inválido.');
+    const badSettings=A2_SETTING_KEYS.filter(k=>!Object.prototype.hasOwnProperty.call(obj.settings,k)||(obj.settings[k]!==null&&typeof obj.settings[k]!=='string'));
+    if(badSettings.length)throw Error('Configurações ausentes ou inválidas: '+badSettings.join(', ')+'.');
+    const countMismatch=required.filter(k=>obj.manifest?.recordCounts?.[k]!==obj.data[k].length);
+    if(countMismatch.length)throw Error('Contagens do manifesto não conferem: '+countMismatch.join(', ')+'.');
+    if(obj.manifest?.dataCategories!==required.length)throw Error('O manifesto não declara as 20 categorias esperadas.');
+    if(!obj.manifest?.checksum)throw Error('O arquivo não contém checksum; não é possível confirmar sua integridade.');
+    const actual=a2Checksum({data:obj.data,settings:obj.settings});
+    if(actual!==obj.manifest.checksum)throw Error('Checksum divergente. Não use este arquivo para restauração.');
+    const total=required.reduce((n,k)=>n+obj.data[k].length,0);
+    const details=required.map(k=>k.replace('a2','')+': '+obj.data[k].length).join(' | ');
+    report('VALIDAÇÃO CONCLUÍDA: checksum FNV-1a confere (checagem de consistência, não assinatura de segurança); 20 categorias presentes; '+total+' registros; '+(file.size/1048576).toFixed(2)+' MB. '+details+' Nenhum dado do aplicativo foi alterado.');
+  }catch(e){report('VALIDAÇÃO NÃO APROVADA: '+(e&&e.message?e.message:'erro inesperado')+' Nenhum dado do aplicativo foi alterado.');}
+};
 window.a2ImportBackup=async function(ev){const f=ev.target.files&&ev.target.files[0];ev.target.value='';if(!f)return;if(f.size>150*1024*1024)return alert('Arquivo acima de 150 MB.');try{const o=JSON.parse(await f.text());if(!o||o.format!=='a2-backup'||!o.data)throw Error('Arquivo não reconhecido.');const data=o.data;const legacyData=JSON.parse(JSON.stringify(data));const all=[...A2_KEYS,...NEW_KEYS];for(const k of all){if(data[k]===undefined&&NEW_KEYS.includes(k))data[k]=[];if(!Array.isArray(data[k]))throw Error('Categoria inválida: '+k);if(data[k].some(x=>!x||typeof x!=='object'||Array.isArray(x)))throw Error('Registro inválido em '+k)}const settings={};for(const k of A2_SETTING_KEYS){const v=o.settings?.[k]??null;if(v!==null&&typeof v!=='string')throw Error('Configuração inválida: '+k);settings[k]=v}if(o.manifest?.checksum){const hasV9=NEW_KEYS.every(k=>Object.prototype.hasOwnProperty.call(legacyData,k));const expected=hasV9?a2Checksum({data,settings}):a2Checksum({data:legacyData,settings});if(o.manifest.checksum!==expected)throw Error('Checksum não confere. O backup pode estar corrompido.');}const n=all.reduce((a,k)=>a+data[k].length,0);if(!confirm('Restaurar '+n+' registros? Os dados atuais deste dispositivo serão substituídos. Será baixada uma cópia pré-restauração.'))return;const pre=window.a2BackupSnapshot();a2DownloadJson(pre,'A2_PRE_RESTAURACAO_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json');const keys=[...all,...A2_SETTING_KEYS,'a2StorageVersion'];const prev={};keys.forEach(k=>prev[k]=localStorage.getItem(k));try{for(const k of all)put(k,data[k]);for(const k of A2_SETTING_KEYS){if(settings[k]===null)localStorage.removeItem(k);else localStorage.setItem(k,settings[k])}localStorage.setItem('a2StorageVersion',A2_STORAGE_VERSION)}catch(err){for(const k of keys.reverse()){try{if(prev[k]===null)localStorage.removeItem(k);else localStorage.setItem(k,prev[k])}catch(_){}}throw Error('Restauração falhou; reversão tentada. '+err.message)}
 clients=data.a2clients;vehicles=data.a2vehicles;services=data.a2services;budgets=data.a2budgets;agenda=data.a2agenda;orders=data.a2orders;history=data.a2history;receivables=data.a2receivables||[];payments=data.a2payments||[];transactions=data.a2transactions||[];crmActivities=data.a2crmActivities||[];maintenance=data.a2maintenance||[];payables=data.a2payables||[];recurring=data.a2recurring||[];serviceCosts=data.a2serviceCosts||[];accounts=data.a2accounts||[];goals=data.a2goals||[];inventory=data.a2inventory;stockMoves=data.a2stockMoves;approvals=data.a2approvals;refresh('home');go('home');alert('Restauração concluída. Confira clientes, OS, financeiro, estoque e fotos.');}catch(e){alert('Não foi possível restaurar: '+e.message)}};
 // Indicadores adicionais sem alterar o histórico financeiro existente.
@@ -2818,4 +2865,90 @@ body{background:#080a0d;color:var(--text)}
 @media(prefers-reduced-motion:reduce){.view button,.view .primary,.view .secondary{transition:none}}
 </style>
 
+
+<script id="A2_AUTH_GATE_V1">
+(function(){
+  'use strict';
+  document.documentElement.classList.add('a2-auth-pending');
+  const PROJECT_URL="https://tpvferieekscatdkrivc.supabase.co";
+  const PUBLIC_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwdmZlcmllZWtzY2F0ZGtyaXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM4MjY4MTksImV4cCI6MjEwOTQwMjgxOX0.WjDhzWYGJbMtAgXyfcCCXydxUpL-pBZ3OV0oUjEnimk";
+  const OWNER_ID="00803aaf-586d-47df-8eb7-a8948eb6490e";
+  const root=document.createElement('div');
+  root.id='a2AuthRoot';
+  root.innerHTML='<div class="auth-card"><div class="auth-brand">A2 · GESTÃO</div><h1>Acesso do administrador</h1><p>Entre com o e-mail e a senha cadastrados no projeto Gestao - A2.</p><form id="a2AuthForm"><label for="a2AuthEmail">E-mail</label><input id="a2AuthEmail" type="email" autocomplete="username" required maxlength="254"><label for="a2AuthPassword">Senha</label><input id="a2AuthPassword" type="password" autocomplete="current-password" required minlength="6"><button id="a2AuthSubmit" type="submit">Entrar no A2 Gestão</button></form><button class="auth-link" id="a2AuthRecover" type="button">Esqueci minha senha</button><div class="auth-message" id="a2AuthMessage" role="status" aria-live="polite">Conectando ao serviço de autenticação…</div><div class="auth-foot">Ambiente privado · A2 Estética Automotiva</div></div>';
+  document.body.appendChild(root);
+  const msg=t=>{const e=document.getElementById('a2AuthMessage');if(e)e.textContent=t||''};
+  const setBusy=v=>{const b=document.getElementById('a2AuthSubmit');if(b){b.disabled=v;b.textContent=v?'Aguarde…':'Entrar no A2 Gestão'}};
+  const isOwner=session=>Boolean(session&&session.user&&String(session.user.id).toLowerCase()===OWNER_ID);
+  function lockApp(message){
+    document.documentElement.classList.remove('a2-auth-pending','a2-auth-unlocked');
+    document.documentElement.classList.add('a2-auth-locked');
+    root.style.display='grid';
+    if(message)msg(message);
+    setBusy(false);
+  }
+  function showApp(session){
+    if(!session){lockApp('Informe seu e-mail e senha para continuar.');return;}
+    if(!isOwner(session)){
+      lockApp('Esta conta não está autorizada a acessar o A2 Gestão.');
+      // Encerra qualquer sessão diferente do proprietário sem bloquear o callback do Auth.
+      setTimeout(()=>{if(window.a2Supabase)window.a2Supabase.auth.signOut().catch(()=>{});},0);
+      return;
+    }
+    root.style.display='none';document.documentElement.classList.remove('a2-auth-pending','a2-auth-locked');document.documentElement.classList.add('a2-auth-unlocked');
+    const top=document.querySelector('.top');
+    if(top&&!document.getElementById('a2AuthLogout')){
+      const b=document.createElement('button');b.id='a2AuthLogout';b.type='button';b.textContent='Sair';
+      b.addEventListener('click',async()=>{b.disabled=true;msg('Encerrando sessão…');const {error}=await window.a2Supabase.auth.signOut();if(error){b.disabled=false;alert('Não foi possível encerrar a sessão: '+error.message)}});
+      top.appendChild(b);
+    }
+  }
+  const cdn=document.createElement('script');
+  cdn.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  cdn.onload=async()=>{
+    try{
+      if(!window.supabase||!window.supabase.createClient)throw new Error('Biblioteca de autenticação indisponível.');
+      window.a2Supabase=window.supabase.createClient(PROJECT_URL,PUBLIC_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+      const {data,error}=await window.a2Supabase.auth.getSession();
+      if(error)throw error;
+      showApp(data.session);
+      window.a2Supabase.auth.onAuthStateChange((event,session)=>{
+        if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED')showApp(session);
+        if(event==='SIGNED_OUT')showApp(null);
+        if(event==='PASSWORD_RECOVERY'){
+          if(!isOwner(session)){showApp(session);return;}
+          showApp(session);
+          setTimeout(()=>{const p=prompt('Digite sua nova senha (mínimo de 8 caracteres):');if(p&&p.length>=8)window.a2Supabase.auth.updateUser({password:p}).then(({error})=>alert(error?'Não foi possível atualizar: '+error.message:'Senha atualizada.'));},250);
+        }
+      });
+    }catch(e){document.documentElement.classList.remove('a2-auth-pending');document.documentElement.classList.add('a2-auth-locked');msg('Falha ao conectar à autenticação: '+(e.message||'erro desconhecido'));}
+  };
+  cdn.onerror=()=>{document.documentElement.classList.remove('a2-auth-pending');document.documentElement.classList.add('a2-auth-locked');msg('Não foi possível carregar o serviço de autenticação. Verifique a conexão e tente novamente.')};
+  document.head.appendChild(cdn);
+  document.getElementById('a2AuthForm').addEventListener('submit',async ev=>{
+    ev.preventDefault();if(!window.a2Supabase){msg('A autenticação ainda está carregando.');return;}
+    const email=document.getElementById('a2AuthEmail').value.trim(),password=document.getElementById('a2AuthPassword').value;
+    setBusy(true);msg('Validando acesso…');
+    try{
+      const {data,error}=await window.a2Supabase.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      if(!data.session)throw new Error('A sessão não foi confirmada.');
+      if(!isOwner(data.session)){
+        await window.a2Supabase.auth.signOut();
+        throw new Error('Esta conta não está autorizada a acessar o A2 Gestão.');
+      }
+      msg('Acesso autorizado.');
+    }
+    catch(e){msg(e.message==='Invalid login credentials'?'E-mail ou senha incorretos.':(e.message||'Não foi possível entrar.'));setBusy(false);}
+  });
+  document.getElementById('a2AuthRecover').addEventListener('click',async()=>{
+    if(!window.a2Supabase){msg('A autenticação ainda está carregando.');return;}
+    const email=document.getElementById('a2AuthEmail').value.trim();
+    if(!email){msg('Informe seu e-mail no campo acima para receber o link de recuperação.');document.getElementById('a2AuthEmail').focus();return;}
+    msg('Solicitando recuperação…');
+    const {error}=await window.a2Supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    msg(error?'Não foi possível solicitar a recuperação: '+error.message:'Se o e-mail estiver cadastrado, você receberá as instruções de recuperação.');
+  });
+})();
+</script>
 </body></html>
