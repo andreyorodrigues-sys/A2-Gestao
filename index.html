@@ -2890,22 +2890,29 @@ body{background:#080a0d;color:var(--text)}
     setBusy(false);
   }
   let appScriptsLoaded=false;
+  let appScriptsPromise=null;
   async function activateAppScripts(){
     if(appScriptsLoaded)return;
-    // Aguarda o DOMContentLoaded real antes de ativar scripts legados.
-    // Assim, o evento sintético abaixo será o único disparo para os listeners adicionados dinamicamente.
-    if(document.readyState==='loading'){
-      await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
-    }
-    const inert=[...document.querySelectorAll('script[data-a2-gated="1"]')];
-    for(const original of inert){
-      const active=document.createElement('script');
-      if(original.id)active.id=original.id;
-      active.textContent=original.textContent;
-      document.body.appendChild(active);
-    }
-    document.dispatchEvent(new Event('DOMContentLoaded',{bubbles:true}));
-    appScriptsLoaded=true;
+    // Evita carregar os scripts duas vezes quando SIGNED_IN e o formulário concluem juntos.
+    if(appScriptsPromise)return appScriptsPromise;
+    appScriptsPromise=(async()=>{
+      // Aguarda o DOMContentLoaded real antes de ativar scripts legados.
+      // Assim, o evento sintético abaixo será o único disparo para os listeners adicionados dinamicamente.
+      if(document.readyState==='loading'){
+        await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+      }
+      const inert=[...document.querySelectorAll('script[data-a2-gated="1"]')];
+      for(const original of inert){
+        const active=document.createElement('script');
+        if(original.id)active.id=original.id;
+        active.textContent=original.textContent;
+        document.body.appendChild(active);
+      }
+      document.dispatchEvent(new Event('DOMContentLoaded',{bubbles:true}));
+      appScriptsLoaded=true;
+    })();
+    try{await appScriptsPromise;}
+    finally{appScriptsPromise=null;}
   }
   async function showApp(session){
     if(!session){lockApp('Informe seu e-mail e senha para continuar.');return;}
