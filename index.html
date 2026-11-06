@@ -2890,7 +2890,7 @@ function saveCatalogPDF(){
  };
  window.a2ShareBudgetWhatsApp=function(id){
   const b=budgets.find(x=>x.id===id);if(!b)return;const c=clients.find(x=>x.id===b.clientId)||clients.find(x=>x.name===b.name)||{},rows=budgetRows(b),sub=rows.reduce((a,x)=>a+Number(x.value||0),0),raw=Number(b.discount||0),disc=b.discountMode==="percentual"?sub*raw/100:raw;
-  window.a2GenerateBudgetPDF(id);const msg="Olá, "+(c.name||b.name)+"! Segue a proposta da A2 para "+(b.car||"seu veículo")+". Total: "+money(Math.max(0,sub-disc))+". Forma de pagamento: "+(b.paymentMethod||"a combinar")+". O PDF será anexado à mensagem. Não é só estética, é experiência.";
+  window.a2GenerateBudgetPDF(id);const msg="Olá, "+(c.name||b.name)+"! Segue a proposta da A2 para "+(b.car||"seu veículo")+". Total: "+money(Math.max(0,sub-disc))+". Forma de pagamento: "+(b.paymentMethod||"a combinar")+". Depois de salvar o PDF, anexe-o nesta conversa. Não é só estética, é experiência.";
   setTimeout(()=>window.open("https://wa.me/"+(String(c.phone||"").replace(/\D/g)?"55"+String(c.phone).replace(/\D/g):"")+"?text="+encodeURIComponent(msg),"_blank"),450);
  };
  const sec=document.getElementById("historico");
@@ -2901,8 +2901,8 @@ function saveCatalogPDF(){
   document.getElementById("a2HistClient").addEventListener("change",function(){const cid=this.value,sel=document.getElementById("a2HistVehicle");sel.innerHTML="<option value=''>Todos os veículos</option>"+vehicles.filter(v=>!cid||v.clientId===cid).map(v=>"<option value='"+esc(v.id)+"'>"+esc(vehicleLabel(v.id))+(v.plate?" • "+esc(v.plate):"")+"</option>").join("")});
  }
  function filteredOrders(){
-  const cid=document.getElementById("a2HistClient")?.value||"",vid=document.getElementById("a2HistVehicle")?.value||"",start=dateObj(document.getElementById("a2HistStart")?.value),end=dateObj(document.getElementById("a2HistEnd")?.value);
-  return orders.filter(o=>{const d=dateObj(o.completedAt||o.updatedAt||o.created||o.date);return (!cid||o.clientId===cid)&&(!vid||o.vehicleId===vid)&&(!start||(d&&d>=start))&&(!end||(d&&d<=end))&&o.status==="Concluída"}).sort((a,b)=>(dateObj(b.completedAt||b.updatedAt||b.created||b.date)?.getTime()||0)-(dateObj(a.completedAt||a.updatedAt||a.created||a.date)?.getTime()||0));
+  const cid=document.getElementById("a2HistClient")?.value||"",vid=document.getElementById("a2HistVehicle")?.value||"",start=dateObj(document.getElementById("a2HistStart")?.value),end=dateObj(document.getElementById("a2HistEnd")?.value),q=(document.getElementById("historySearch")?.value||"").toLowerCase();
+  return orders.filter(o=>{const d=dateObj(o.completedAt||o.updatedAt||o.created||o.date),hay=(clientName(o.clientId)+" "+vehicleLabel(o.vehicleId)+" "+(o.service||"")).toLowerCase();return (!q||hay.includes(q))&&(!cid||o.clientId===cid)&&(!vid||o.vehicleId===vid)&&(!start||(d&&d>=start))&&(!end||(d&&d<=end))&&o.status==="Concluída"}).sort((a,b)=>(dateObj(b.completedAt||b.updatedAt||b.created||b.date)?.getTime()||0)-(dateObj(a.completedAt||a.updatedAt||a.created||a.date)?.getTime()||0));
  }
  window.a2ApplyHistoryFilters=function(){
   const list=filteredOrders(),el=document.getElementById("historyList");el.innerHTML=list.length?list.map(o=>"<div class='item'><div><h3>"+esc(clientName(o.clientId))+" • "+esc(vehicleLabel(o.vehicleId))+"</h3><p>"+esc(o.service||"Serviço")+" • "+br(o.completedAt||o.updatedAt||o.created||o.date)+"<br><span class='pill'>Concluída</span></p></div><strong>"+money(o.value)+"</strong></div>").join(""):"<div class='empty'>Nenhum serviço concluído encontrado com esses filtros.</div>";
@@ -2917,7 +2917,7 @@ function saveCatalogPDF(){
  };
  window.a2ShareHistoryWhatsApp=function(){
   const list=filteredOrders(),cid=document.getElementById("a2HistClient")?.value||"",c=clients.find(x=>x.id===cid);if(!c){alert("Selecione um cliente específico para compartilhar o relatório.");return}if(!list.length){alert("Não há serviços concluídos para compartilhar.");return}
-  window.a2GenerateHistoryPDF();const msg="Olá, "+c.name+"! Segue o relatório do histórico de serviços realizados pela A2. Foram encontrados "+list.length+" serviço(s). O PDF será anexado à mensagem. Obrigado pela confiança!";
+  window.a2GenerateHistoryPDF();const msg="Olá, "+c.name+"! Segue o relatório do histórico de serviços realizados pela A2. Foram encontrados "+list.length+" serviço(s). Depois de salvar o PDF, anexe-o nesta conversa. Obrigado pela confiança!";
   setTimeout(()=>window.open("https://wa.me/"+(String(c.phone||"").replace(/\D/g)?"55"+String(c.phone).replace(/\D/g):"")+"?text="+encodeURIComponent(msg),"_blank"),450);
  };
  const oldRender=window.renderBudgets;
