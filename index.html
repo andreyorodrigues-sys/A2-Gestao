@@ -2843,6 +2843,88 @@ function saveCatalogPDF(){
   };
   const oldRefreshCRM=window.refresh;window.refresh=function(id){oldRefreshCRM(id);if(id==='crm')window.renderCRM();};
 })();
+
+// A2: orçamento PDF e relatório filtrado do histórico
+(function(){
+ const originalOpen=window.openForm;
+ window.openForm=function(type,id){
+  originalOpen(type,id);
+  if(type!=="orcamento")return;
+  const b=budgets.find(x=>x.id===id)||{},fields=document.getElementById("fields");
+  if(!fields||document.getElementById("a2BudgetExtraFields"))return;
+  const box=document.createElement("div");box.id="a2BudgetExtraFields";box.className="inspection";
+  box.innerHTML="<h3>Condições comerciais</h3><label>Desconto</label><div class='grid2'><select id='a2BudgetDiscountMode'><option value='valor'>Em R$</option><option value='percentual'>Em %</option></select><input id='a2BudgetDiscount' type='number' min='0' step='0.01' placeholder='0,00'></div><label>Forma de pagamento</label><select id='a2BudgetPayment'>"+["Pix","Dinheiro","Débito","Crédito","Transferência","A combinar","Outros"].map(x=>"<option>"+x+"</option>").join("")+"</select><label>Condição / parcelamento</label><input id='a2BudgetPaymentTerms' maxlength='160' placeholder='Ex.: à vista ou em até 3x no cartão'><label>Validade</label><input id='a2BudgetValidity' type='date'><label>Observações para o cliente</label><textarea id='a2BudgetNotes' maxlength='600'></textarea>";
+  fields.appendChild(box);
+  document.getElementById("a2BudgetDiscountMode").value=b.discountMode||"valor";
+  document.getElementById("a2BudgetDiscount").value=b.discount||"";
+  document.getElementById("a2BudgetPayment").value=b.paymentMethod||"A combinar";
+  document.getElementById("a2BudgetPaymentTerms").value=b.paymentTerms||"";
+  document.getElementById("a2BudgetValidity").value=b.validUntil||"";
+  document.getElementById("a2BudgetNotes").value=b.customerNotes||"";
+ };
+ const originalSave=window.saveForm;
+ window.saveForm=async function(e){
+  const form=e.target,isBudget=form.querySelector("[name=type]")?.value==="orcamento";
+  if(!isBudget)return originalSave(e);
+  const extra={discount:Number(document.getElementById("a2BudgetDiscount")?.value||0),discountMode:document.getElementById("a2BudgetDiscountMode")?.value||"valor",paymentMethod:document.getElementById("a2BudgetPayment")?.value||"",paymentTerms:document.getElementById("a2BudgetPaymentTerms")?.value||"",validUntil:document.getElementById("a2BudgetValidity")?.value||"",customerNotes:document.getElementById("a2BudgetNotes")?.value||""};
+  const id=form.querySelector("[name=id]")?.value||"";
+  const result=await originalSave(e),saved=budgets.find(x=>x.id===id)||budgets[budgets.length-1];
+  if(saved){Object.assign(saved,extra);saveAll();renderBudgets();}
+  return result;
+ };
+ function dateObj(v){if(!v)return null;let m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);m=String(v).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);let d=new Date(v);return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+ function br(v){let d=dateObj(v);return d?d.toLocaleDateString("pt-BR"):(v||"—")}
+ function printDoc(title,html){
+  const w=window.open("","_blank");if(!w){alert("Permita pop-ups para gerar o PDF.");return}
+  w.document.open();w.document.write("<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>"+esc(title)+"</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#20242a;padding:26px}.head{border-bottom:3px solid #f47b20;padding-bottom:12px;margin-bottom:18px;display:flex;justify-content:space-between}.brand{font-size:21px;font-weight:900}.brand span{color:#f47b20}.muted{font-size:11px;color:#666}h1{font-size:22px}h2{font-size:13px;color:#b65313;margin:20px 0 8px;text-transform:uppercase}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.box{border:1px solid #ddd;border-radius:8px;padding:10px}.label{font-size:9px;color:#777;text-transform:uppercase}.value{font-size:12px;font-weight:600;white-space:pre-wrap}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{border-bottom:1px solid #ddd;padding:9px 6px;text-align:left;font-size:11px}td:last-child,th:last-child{text-align:right}.tot{margin:14px 0 0 auto;width:260px}.tot div{display:flex;justify-content:space-between;padding:5px 0}.grand{border-top:2px solid #f47b20;font-size:17px;font-weight:900}.foot{border-top:1px solid #ddd;margin-top:24px;padding-top:10px;text-align:center;font-size:10px;color:#666}@page{size:A4;margin:12mm}@media print{body{padding:0}}</style></head><body>"+html+"<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>");
+  w.document.close();
+ }
+ function header(kind,ref){return "<div class='head'><div><div class='brand'>A2 <span>ESTÉTICA AUTOMOTIVA</span></div><div class='muted'>Não é só estética, é experiência.</div></div><b>"+esc(kind)+"<br>"+esc(ref)+"</b></div>"}
+ function budgetRows(b){return Array.isArray(b.services)&&b.services.length?b.services:(b.service?[{serviceId:b.serviceId,service:b.service,value:b.value}]:[])}
+ window.a2GenerateBudgetPDF=function(id){
+  const b=budgets.find(x=>x.id===id);if(!b)return;const c=clients.find(x=>x.id===b.clientId)||clients.find(x=>x.name===b.name)||{},v=vehicles.find(x=>x.id===b.vehicleId)||{};
+  const rows=budgetRows(b),sub=rows.reduce((a,x)=>a+Number(x.value||0),0),raw=Number(b.discount||0),disc=b.discountMode==="percentual"?sub*Math.min(100,Math.max(0,raw))/100:Math.min(sub,Math.max(0,raw)),total=Math.max(0,sub-disc);
+  const tr=rows.map(x=>{const svc=services.find(z=>z.id===x.serviceId)||services.find(z=>z.name===x.service)||{};return "<tr><td><b>"+esc(x.service||"Serviço")+"</b><br>"+esc(svc.description||"Conforme escopo do serviço cadastrado.")+"</td><td>"+money(x.value)+"</td></tr>"}).join("");
+  const html=header("ORÇAMENTO",String(id).slice(-6).toUpperCase())+"<h1>Proposta de serviços</h1><div class='muted'>Emitido: "+br(b.created||new Date())+" • Validade: "+(b.validUntil?br(b.validUntil):"Não informada")+"</div><h2>Cliente</h2><div class='grid'><div class='box'><div class='label'>Nome</div><div class='value'>"+esc(c.name||b.name||"—")+"</div></div><div class='box'><div class='label'>Contato</div><div class='value'>"+esc(c.phone||"Não informado")+"</div></div><div class='box'><div class='label'>CPF/CNPJ</div><div class='value'>"+esc(c.cpf||"Não informado")+"</div></div><div class='box'><div class='label'>Endereço</div><div class='value'>"+esc(c.address||"Não informado")+"</div></div></div><h2>Veículo</h2><div class='grid'><div class='box'><div class='label'>Modelo</div><div class='value'>"+esc((v.brand||"")+" "+(v.model||b.car||""))+"</div></div><div class='box'><div class='label'>Placa / ano / cor</div><div class='value'>"+esc([v.plate,v.year,v.color].filter(Boolean).join(" • ")||"Não informado")+"</div></div></div><h2>Serviços propostos</h2><table><thead><tr><th>Serviço e descrição</th><th>Valor</th></tr></thead><tbody>"+tr+"</tbody></table><div class='tot'><div><span>Subtotal</span><b>"+money(sub)+"</b></div>"+(disc?"<div><span>Desconto</span><b>− "+money(disc)+"</b></div>":"")+"<div class='grand'><span>TOTAL</span><span>"+money(total)+"</span></div></div><h2>Pagamento</h2><div class='grid'><div class='box'><div class='label'>Forma</div><div class='value'>"+esc(b.paymentMethod||"A combinar")+"</div></div><div class='box'><div class='label'>Condição</div><div class='value'>"+esc(b.paymentTerms||"A combinar")+"</div></div></div><h2>Observações</h2><div class='box value'>"+esc(b.customerNotes||"Sem observações adicionais.")+"</div><div class='foot'>A2 Estética Automotiva • Atendimento mediante agendamento</div>";
+  printDoc("Orçamento A2",html);
+ };
+ window.a2ShareBudgetWhatsApp=function(id){
+  const b=budgets.find(x=>x.id===id);if(!b)return;const c=clients.find(x=>x.id===b.clientId)||clients.find(x=>x.name===b.name)||{},rows=budgetRows(b),sub=rows.reduce((a,x)=>a+Number(x.value||0),0),raw=Number(b.discount||0),disc=b.discountMode==="percentual"?sub*raw/100:raw;
+  window.a2GenerateBudgetPDF(id);const msg="Olá, "+(c.name||b.name)+"! Segue a proposta da A2 para "+(b.car||"seu veículo")+". Total: "+money(Math.max(0,sub-disc))+". Forma de pagamento: "+(b.paymentMethod||"a combinar")+". O PDF será anexado à mensagem. Não é só estética, é experiência.";
+  setTimeout(()=>window.open("https://wa.me/"+(String(c.phone||"").replace(/\D/g)?"55"+String(c.phone).replace(/\D/g):"")+"?text="+encodeURIComponent(msg),"_blank"),450);
+ };
+ const sec=document.getElementById("historico");
+ if(sec&&!document.getElementById("a2HistoryFilters")){
+  const box=document.createElement("div");box.id="a2HistoryFilters";box.className="inspection";
+  box.innerHTML="<h3>Relatório de serviços</h3><label>Cliente</label><select id='a2HistClient'><option value=''>Todos os clientes</option>"+clients.map(c=>"<option value='"+esc(c.id)+"'>"+esc(c.name)+"</option>").join("")+"</select><label>Veículo</label><select id='a2HistVehicle'><option value=''>Todos os veículos</option>"+vehicles.map(v=>"<option value='"+esc(v.id)+"'>"+esc(vehicleLabel(v.id))+(v.plate?" • "+esc(v.plate):"")+"</option>").join("")+"</select><div class='grid2'><div><label>Data inicial</label><input id='a2HistStart' type='date'></div><div><label>Data final</label><input id='a2HistEnd' type='date'></div></div><button class='primary' type='button' onclick='a2ApplyHistoryFilters()'>Aplicar filtros</button><div class='two-actions'><button class='secondary' type='button' onclick='a2GenerateHistoryPDF()'>Gerar relatório PDF</button><button class='secondary' type='button' onclick='a2ShareHistoryWhatsApp()'>Compartilhar</button></div><div class='smallnote' id='a2HistCount'></div>";
+  sec.insertBefore(box,document.getElementById("historySearch"));
+  document.getElementById("a2HistClient").addEventListener("change",function(){const cid=this.value,sel=document.getElementById("a2HistVehicle");sel.innerHTML="<option value=''>Todos os veículos</option>"+vehicles.filter(v=>!cid||v.clientId===cid).map(v=>"<option value='"+esc(v.id)+"'>"+esc(vehicleLabel(v.id))+(v.plate?" • "+esc(v.plate):"")+"</option>").join("")});
+ }
+ function filteredOrders(){
+  const cid=document.getElementById("a2HistClient")?.value||"",vid=document.getElementById("a2HistVehicle")?.value||"",start=dateObj(document.getElementById("a2HistStart")?.value),end=dateObj(document.getElementById("a2HistEnd")?.value);
+  return orders.filter(o=>{const d=dateObj(o.completedAt||o.updatedAt||o.created||o.date);return (!cid||o.clientId===cid)&&(!vid||o.vehicleId===vid)&&(!start||(d&&d>=start))&&(!end||(d&&d<=end))&&o.status==="Concluída"}).sort((a,b)=>(dateObj(b.completedAt||b.updatedAt||b.created||b.date)?.getTime()||0)-(dateObj(a.completedAt||a.updatedAt||a.created||a.date)?.getTime()||0));
+ }
+ window.a2ApplyHistoryFilters=function(){
+  const list=filteredOrders(),el=document.getElementById("historyList");el.innerHTML=list.length?list.map(o=>"<div class='item'><div><h3>"+esc(clientName(o.clientId))+" • "+esc(vehicleLabel(o.vehicleId))+"</h3><p>"+esc(o.service||"Serviço")+" • "+br(o.completedAt||o.updatedAt||o.created||o.date)+"<br><span class='pill'>Concluída</span></p></div><strong>"+money(o.value)+"</strong></div>").join(""):"<div class='empty'>Nenhum serviço concluído encontrado com esses filtros.</div>";
+  document.getElementById("a2HistCount").textContent=list.length+" serviço(s) concluído(s) encontrado(s).";
+ };
+ window.a2GenerateHistoryPDF=function(){
+  const list=filteredOrders();if(!list.length){alert("Não há serviços concluídos para gerar o relatório.");return}
+  const cid=document.getElementById("a2HistClient")?.value||"",vid=document.getElementById("a2HistVehicle")?.value||"",c=clients.find(x=>x.id===cid),v=vehicles.find(x=>x.id===vid),from=document.getElementById("a2HistStart")?.value,to=document.getElementById("a2HistEnd")?.value,total=list.reduce((a,o)=>a+Number(o.value||0),0);
+  const rows=list.map(o=>"<tr><td>"+br(o.completedAt||o.updatedAt||o.created||o.date)+"</td><td>"+esc(vehicleLabel(o.vehicleId))+"</td><td>"+esc(o.service||"Serviço")+"</td><td>"+money(o.value)+"</td></tr>").join("");
+  const html=header("HISTÓRICO DE SERVIÇOS","RELATÓRIO A2")+"<h1>Serviços realizados</h1><div class='muted'>Gerado em "+br(new Date())+"</div><h2>Filtros</h2><div class='grid'><div class='box'><div class='label'>Cliente</div><div class='value'>"+esc(c?.name||"Todos os clientes")+"</div></div><div class='box'><div class='label'>Veículo</div><div class='value'>"+esc(v?vehicleLabel(v.id):"Todos os veículos")+"</div></div><div class='box'><div class='label'>De</div><div class='value'>"+(from?br(from):"Sem limite")+"</div></div><div class='box'><div class='label'>Até</div><div class='value'>"+(to?br(to):"Sem limite")+"</div></div></div><h2>Serviços executados</h2><table><thead><tr><th>Data</th><th>Veículo</th><th>Serviço</th><th>Valor registrado</th></tr></thead><tbody>"+rows+"</tbody></table><div class='tot'><div><span>Serviços</span><b>"+list.length+"</b></div><div class='grand'><span>Total</span><span>"+money(total)+"</span></div></div><div class='foot'>Relatório baseado nas ordens de serviço concluídas registradas no A2 Gestão.</div>";
+  printDoc("Histórico de serviços A2",html);
+ };
+ window.a2ShareHistoryWhatsApp=function(){
+  const list=filteredOrders(),cid=document.getElementById("a2HistClient")?.value||"",c=clients.find(x=>x.id===cid);if(!c){alert("Selecione um cliente específico para compartilhar o relatório.");return}if(!list.length){alert("Não há serviços concluídos para compartilhar.");return}
+  window.a2GenerateHistoryPDF();const msg="Olá, "+c.name+"! Segue o relatório do histórico de serviços realizados pela A2. Foram encontrados "+list.length+" serviço(s). O PDF será anexado à mensagem. Obrigado pela confiança!";
+  setTimeout(()=>window.open("https://wa.me/"+(String(c.phone||"").replace(/\D/g)?"55"+String(c.phone).replace(/\D/g):"")+"?text="+encodeURIComponent(msg),"_blank"),450);
+ };
+ const oldRender=window.renderBudgets;
+ window.renderBudgets=function(){oldRender();const cards=[...document.querySelectorAll("#budgetList .item")],list=budgets.slice().reverse();cards.forEach((card,i)=>{const b=list[i],actions=card.lastElementChild;if(!b||!actions)return;const pdf=document.createElement("button");pdf.className="mini";pdf.textContent="PDF";pdf.onclick=()=>a2GenerateBudgetPDF(b.id);const send=document.createElement("button");send.className="mini wa";send.textContent="Enviar";send.onclick=()=>a2ShareBudgetWhatsApp(b.id);actions.append(pdf,send)})};
+ const oldRefresh=window.refresh;
+ window.refresh=function(id){if(oldRefresh)oldRefresh(id);if(id==="historico")a2ApplyHistoryFilters()};
+})();
 </script>
 
 <style id="a2-global-dashboard-system">
