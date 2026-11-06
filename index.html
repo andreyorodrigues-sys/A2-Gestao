@@ -1164,8 +1164,38 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
     });
     document.getElementById('serviceList').innerHTML=list.length?list.map(s=>{
       const p=svcPrices2(s);
-      return `<div class="item"><div onclick="showService('${s.id}')"><h3>${esc(s.name)}</h3><p>${esc((s.vehicleCategories||A2_VEHICLE_CATS).join(' • '))}<br>Hatch / Sedan: ${money(p['Hatch / Sedan'])} • SUV / Caminhonete: ${money(p['SUV / Caminhonete'])}</p></div><div class="item-actions"><button class="mini" onclick="showService('${s.id}')">Ver</button><button class="mini" onclick="openForm('servico','${s.id}')">Editar</button></div></div>`;
+      return `<div class="item"><div onclick="showService('${s.id}')"><h3>${esc(s.name)} ${s.active===false?'<span class="pill">Inativo</span>':''}</h3><p>${esc((s.vehicleCategories||A2_VEHICLE_CATS).join(' • '))}<br>Hatch / Sedan: ${money(p['Hatch / Sedan'])} • SUV / Caminhonete: ${money(p['SUV / Caminhonete'])}</p></div><div class="item-actions"><button class="mini" onclick="showService('${s.id}')">Ver</button><button class="mini" onclick="openForm('servico','${s.id}')">Editar</button><button class="mini danger" onclick="a2DeleteService('${s.id}')">Excluir</button></div></div>`;
     }).join(''):'<div class="empty">Nenhum serviço cadastrado para esta categoria.</div>';
+  };
+
+  window.a2DeleteService=function(id){
+    const s=services.find(x=>String(x.id)===String(id));
+    if(!s)return;
+    const key=String(s.id),name=String(s.name||'').trim().toLowerCase();
+    const hasName=arr=>(Array.isArray(arr)?arr:[]).some(x=>String(x?.serviceId||x?.id||'')===key||String(x?.service||x?.name||'').trim().toLowerCase()===name);
+    const budgetRefs=budgets.filter(b=>hasName(b.services)||String(b.serviceId||'')===key||String(b.service||'').toLowerCase().split(' + ').includes(name));
+    const orderRefs=orders.filter(o=>hasName(o.services)||String(o.serviceId||'')===key||String(o.service||'').toLowerCase().split(' + ').includes(name));
+    const agendaRefs=agenda.filter(a=>(Array.isArray(a.serviceIds)&&a.serviceIds.some(x=>String(x)===key))||String(a.serviceId||'')===key||String(a.service||'').trim().toLowerCase()===name);
+    const costRefs=serviceCosts.filter(x=>String(x.serviceId||'')===key);
+    const linked=budgetRefs.length+orderRefs.length+agendaRefs.length+costRefs.length;
+    if(linked){
+      const details=[];
+      if(budgetRefs.length)details.push(budgetRefs.length+' orçamento(s)');
+      if(orderRefs.length)details.push(orderRefs.length+' OS');
+      if(agendaRefs.length)details.push(agendaRefs.length+' agendamento(s)');
+      if(costRefs.length)details.push(costRefs.length+' cadastro(s) de custo');
+      if(!confirm('Este serviço está vinculado a '+details.join(', ')+'. Para preservar o histórico, ele será apenas INATIVADO e deixará de aparecer para novos lançamentos. Deseja continuar?'))return;
+      s.active=false;
+      saveAll();
+      renderServices();
+      if(typeof showToast==='function')showToast('Serviço inativado; histórico preservado.');
+      return;
+    }
+    if(!confirm('Excluir definitivamente o serviço "'+s.name+'"? Esta ação não poderá ser desfeita.'))return;
+    services=services.filter(x=>String(x.id)!==key);
+    saveAll();
+    renderServices();
+    if(typeof showToast==='function')showToast('Serviço excluído.');
   };
 
   const previousOpenForm=window.openForm;
