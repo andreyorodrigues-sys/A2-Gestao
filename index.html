@@ -1836,7 +1836,10 @@ window.a2V9Ready=true;
       <div class="total">TOTAL: ${money(total)}</div>
       ${o.notes?`<div class="notes"><div class="label">Observações</div><div class="value">${esc(o.notes)}</div></div>`:''}
       <div class="footer">A2 Estética Automotiva • Ordem de Serviço ${esc(number)}</div>
-    </body></html>`;
+    
+
+
+</body></html>`;
     popup.document.open();
     popup.document.write(html);
     popup.document.close();
@@ -1889,7 +1892,7 @@ window.a2V9Ready=true;
       <input type="hidden" name="clientId" value="${escA2(o.clientId||'')}"><input type="hidden" name="vehicleId" value="${escA2(o.vehicleId||'')}">
       <div class="a2-os-head"><div class="a2-os-title">ORDEM DE SERVIÇO</div><div class="a2-os-number">${escA2(numOS(o))}</div><div class="a2-os-status"><span>Status</span><select name="status"><option ${osStatus(o)==='Aguardando check-in'?'selected':''}>Aguardando check-in</option><option ${osStatus(o)==='Em execução'?'selected':''}>Em execução</option><option ${osStatus(o)==='Concluída'?'selected':''}>Concluída</option></select></div></div>
       <section class="a2-os-section"><div class="a2-os-section-title">DADOS DO ORÇAMENTO</div>
-        <div class="a2-budget-grid"><div><span>Cliente</span><b>${escA2(c?.name||clientName(o.clientId)||'')}</b></div><div><span>Telefone</span><b>${escA2(c?.phone||'')}</b></div><div><span>Data de abertura</span><b>${escA2(o.created||'')}</b></div><div><span>Veículo</span><b>${escA2(v?vehicleLabel(v.id):vehicleLabel(o.vehicleId)||'')}</b></div><div><span>Placa</span><b>${escA2(v?.plate||'')}</b></div><div class="wide"><span>Serviços contratados</span><b>${escA2(servicesText)}</b></div></div>
+        <div class="a2-budget-grid"><div><span>Cliente</span><b>${escA2(c?.name||clientName(o.clientId)||'')}</b></div><div><span>Telefone</span><b>${escA2(c?.phone||'')}</b></div><label class="a2-os-date-field" style="display:flex;flex-direction:column;gap:6px"><span>Data da OS / abertura</span><input type="date" name="created" value="${escA2((()=>{const p=String(o.created||'').split('/');return p.length===3?p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0'):''})())}" style="width:100%;box-sizing:border-box;min-height:42px;padding:8px;border:1px solid var(--line);border-radius:9px;background:#0f1216;color:var(--text);font-size:15px"></label><div><span>Veículo</span><b>${escA2(v?vehicleLabel(v.id):vehicleLabel(o.vehicleId)||'')}</b></div><div><span>Placa</span><b>${escA2(v?.plate||'')}</b></div><div class="wide"><span>Serviços contratados</span><b>${escA2(servicesText)}</b></div></div>
       </section>
       <section class="inspection a2-os-inspection"><h3>CHECKLIST / VISTORIA — ENTRADA</h3><label class="a2-km">KM de entrada<input name="kmEntry" inputmode="numeric" type="number" min="0" value="${escA2(o.kmEntry??o.km??'')}" placeholder="Ex.: 85420"></label><div class="hint">Marque os itens conferidos no recebimento do veículo. Ao final da lista, registre as fotos gerais da entrada.</div><div class="check-grid">${checks('start',start)}</div><button type="button" class="primary a2-photo-btn" onclick="document.getElementById('startPhotoInput').click()">📷 Tirar fotos da entrada</button><input id="startPhotoInput" type="file" accept="image/*" capture="environment" multiple onchange="handleInspectionPhotos('start',this)"><div class="photo-count" id="startPhotoCount">${start.photos?.length||0} foto(s) registrada(s)</div><div class="photo-preview a2-os-photo-preview" id="startPhotoPreview">${photoThumbs(start.photos||[])||''}</div><label class="a2-notes">Observações da entrada<textarea name="notesEntry" placeholder="Registre avarias ou informações importantes...">${escA2(o.notesEntry||'')}</textarea></label></section>
       <div class="a2-os-progress"><span>SERVIÇO</span><b>${osStatus(o)==='Em execução'?'EM ANDAMENTO':'Aguardando início'}</b></div>
@@ -2415,8 +2418,17 @@ window.a2V9Ready=true;
     const oid=String(id||d.id||'');
     const o=orders.find(x=>String(x.id)===oid);
     if(!o){alert('OS não encontrada.');return false;}
+    let correctedOpeningDate=o.created||'';
+    if(d.created!==undefined&&d.created!==''){
+      const dateMatch=String(d.created).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!dateMatch){alert('Informe uma data válida para a OS.');return false;}
+      const candidate=new Date(Number(dateMatch[1]),Number(dateMatch[2])-1,Number(dateMatch[3]));
+      if(candidate.getFullYear()!==Number(dateMatch[1])||candidate.getMonth()!==Number(dateMatch[2])-1||candidate.getDate()!==Number(dateMatch[3])){alert('A data informada não existe.');return false;}
+      correctedOpeningDate=dateMatch[3]+'/'+dateMatch[2]+'/'+dateMatch[1];
+    }
     const kmEntry=d.kmEntry!==undefined?d.kmEntry:(d.km!==undefined?d.km:(o.kmEntry??o.km??''));
     const kmExit=d.kmExit!==undefined?d.kmExit:(o.kmExit??'');
+    o.created=correctedOpeningDate;
     o.kmEntry=kmEntry; o.kmExit=kmExit; o.km=kmEntry;
     if(d.notesEntry!==undefined)o.notesEntry=d.notesEntry;
     if(d.notesExit!==undefined)o.notesExit=d.notesExit;
