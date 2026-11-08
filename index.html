@@ -1857,7 +1857,7 @@ window.a2V9Ready=true;
   if(typeof originalOpen==='function'){
     window.openOS=function(id){
       const result=originalOpen.apply(this,arguments);
-      const o=(Array.isArray(window.orders)?window.orders:[]).find(x=>String(x.id)===String(id));
+      const o=(typeof orders!=='undefined'&&Array.isArray(orders)?orders:[]).find(x=>String(x.id)===String(id));
       const section=document.querySelector('#fields .a2-os-section');
       if(o&&section&&!document.getElementById('a2OsOpeningDate')){
         const wrap=document.createElement('label');
