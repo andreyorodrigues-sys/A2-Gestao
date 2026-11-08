@@ -1836,7 +1836,68 @@ window.a2V9Ready=true;
       <div class="total">TOTAL: ${money(total)}</div>
       ${o.notes?`<div class="notes"><div class="label">Observações</div><div class="value">${esc(o.notes)}</div></div>`:''}
       <div class="footer">A2 Estética Automotiva • Ordem de Serviço ${esc(number)}</div>
-    </body></html>`;
+    
+<script id="a2-os-edit-date-fix">
+/* A2 Gestão — edição da data de abertura, inclusive em OS concluídas. */
+(function(){
+  if(window.__a2OSDateEditInstalled)return;
+  window.__a2OSDateEditInstalled=true;
+  const toInputDate=value=>{
+    const s=String(value||'').trim();
+    let m=s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);
+    if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(s))return s;
+    return '';
+  };
+  const toStoredDate=value=>{
+    const m=String(value||'').match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+    return m?m[3]+'/'+m[2]+'/'+m[1]:'';
+  };
+  const originalOpen=window.openOS;
+  if(typeof originalOpen==='function'){
+    window.openOS=function(id){
+      const result=originalOpen.apply(this,arguments);
+      const o=(Array.isArray(window.orders)?window.orders:[]).find(x=>String(x.id)===String(id));
+      const section=document.querySelector('#fields .a2-os-section');
+      if(o&&section&&!document.getElementById('a2OsOpeningDate')){
+        const wrap=document.createElement('label');
+        wrap.className='a2-os-date-edit';
+        wrap.style.cssText='display:block;margin:10px 0 12px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:12px;color:var(--muted);font-weight:700';
+        wrap.innerHTML='DATA DA OS / ABERTURA<input id="a2OsOpeningDate" type="date" value="'+toInputDate(o.created)+'" style="display:block;width:100%;box-sizing:border-box;margin-top:7px;min-height:44px;padding:10px;border:1px solid var(--line);border-radius:9px;background:#0f1216;color:var(--text);font-size:16px">';
+        section.appendChild(wrap);
+      }
+      return result;
+    };
+  }
+  const originalSave=window.a2SalvarOS;
+  if(typeof originalSave==='function'){
+    window.a2SalvarOS=function(id,forcedStatus){
+      const input=document.getElementById('a2OsOpeningDate');
+      const newDate=input?toStoredDate(input.value):'';
+      if(input&&!newDate){alert('Informe uma data válida para a OS.');return false;}
+      const o=(Array.isArray(window.orders)?window.orders:[]).find(x=>String(x.id)===String(id));
+      const previous=o?.created;
+      const ok=originalSave.apply(this,arguments);
+      if(!ok||!o||!input)return ok;
+      o.created=newDate;
+      try{
+        if(typeof window.saveAll==='function')window.saveAll();
+        const saved=JSON.parse(localStorage.getItem('a2orders')||'[]').find(x=>String(x.id)===String(id));
+        if(!saved||String(saved.created)!==newDate)throw new Error('A data não foi confirmada no armazenamento.');
+        return true;
+      }catch(err){
+        o.created=previous;
+        try{if(typeof window.saveAll==='function')window.saveAll();}catch(_){}
+        alert('Não foi possível confirmar a alteração da data. Os demais dados da OS foram preservados. Faça um backup e tente novamente.');
+        console.error('A2 data da OS:',err);
+        return false;
+      }
+    };
+  }
+})();
+</script>
+
+</body></html>`;
     popup.document.open();
     popup.document.write(html);
     popup.document.close();
