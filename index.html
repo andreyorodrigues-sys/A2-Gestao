@@ -1956,7 +1956,8 @@ window.a2V9Ready=true;
   function clientPhone(o){ const c=clients.find(x=>String(x.id)===String(o?.clientId)); return c?.phone||''; }
   function plate(o){ const v=vehicles.find(x=>String(x.id)===String(o?.vehicleId)); return v?.plate||''; }
   function openOS(id){
-    const o=orders.find(x=>x.id===id); if(!o)return;
+    const key=String(id??'');
+    const o=orders.find(x=>String(x.id)===key); if(!o){alert('Não foi possível localizar esta ordem de serviço. Atualize a lista e tente novamente.');return;}
     resetPendingInspection(o);
     go('form');
     const title=document.getElementById('formTitle'); if(title) title.innerHTML='ORDEM DE SERVIÇO';
@@ -2075,7 +2076,12 @@ window.a2V9Ready=true;
   window.startOSService=function(id){const form=document.querySelector('#form form'); if(!form)return; saveOSData(form,'Em execução'); openOS(id);};
   window.finishOS=function(id){const form=document.querySelector('#form form'); if(!form)return; saveOSData(form,'Concluída'); openOS(id);};
   // Guarda a função original ANTES de substituí-la. Isso evita recursão e faz Editar funcionar no iPhone.
-  window.a2OpenOS=function(id){ openOS(String(id)); };
+  window.a2OpenOS=function(id){
+    try{
+      if(!document.getElementById('form')||!document.getElementById('fields')){alert('A tela de edição não está disponível. Recarregue o aplicativo e tente novamente.');return;}
+      openOS(String(id));
+    }catch(err){console.error('A2 abrir OS:',err);alert('Falha ao abrir a edição da OS: '+(err?.message||'erro inesperado'));}
+  };
   if(!window.__a2OriginalOpenForm) window.__a2OriginalOpenForm=window.openForm;
   window.openForm=function(type,id){
     if(type==='os'){ window.a2OpenOS(id); return; }
