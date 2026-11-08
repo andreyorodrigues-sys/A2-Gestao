@@ -1964,6 +1964,7 @@ window.a2V9Ready=true;
     const c=clients.find(x=>String(x.id)===String(o.clientId));
     const v=vehicles.find(x=>String(x.id)===String(o.vehicleId));
     const servicesText=o.service||((o.services||[]).map(x=>x.service||x.name).filter(Boolean).join(' + '));
+    const executionDateInput=o.executionDate||(o.completedAt?new Date(o.completedAt).toISOString().slice(0,10):(o.created&&/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(o.created)?(()=>{const [d,m,y]=o.created.split('/');return y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0')})():''));
     const rawStart=o.inspectionStart||{checks:[],photos:[]};
     const rawEnd=o.inspectionEnd||{checks:[],photos:[]};
     // Mantém fotos antigas que tenham sido associadas a itens individuais, exibindo-as
@@ -1976,6 +1977,7 @@ window.a2V9Ready=true;
       <input type="hidden" name="type" value="os"><input type="hidden" name="id" value="${escA2(o.id)}">
       <input type="hidden" name="clientId" value="${escA2(o.clientId||'')}"><input type="hidden" name="vehicleId" value="${escA2(o.vehicleId||'')}">
       <div class="a2-os-head"><div class="a2-os-title">ORDEM DE SERVIÇO</div><div class="a2-os-number">${escA2(numOS(o))}</div><div class="a2-os-status"><span>Status</span><select name="status"><option ${osStatus(o)==='Aguardando check-in'?'selected':''}>Aguardando check-in</option><option ${osStatus(o)==='Em execução'?'selected':''}>Em execução</option><option ${osStatus(o)==='Concluída'?'selected':''}>Concluída</option></select></div></div>
+      <section class="a2-os-section"><div class="a2-os-section-title">DATA DO SERVIÇO</div><label class="a2-os-date-edit">Data de execução / conclusão<input type="date" name="executionDate" value="${escA2(executionDateInput)}"></label><small>Alterar esta data não modifica a data original de cadastro da OS.</small></section>
       <section class="a2-os-section"><div class="a2-os-section-title">DADOS DO ORÇAMENTO</div>
         <div class="a2-budget-grid"><div><span>Cliente</span><b>${escA2(c?.name||clientName(o.clientId)||'')}</b></div><div><span>Telefone</span><b>${escA2(c?.phone||'')}</b></div><div><span>Data de abertura</span><b>${escA2(o.created||'')}</b></div><div><span>Veículo</span><b>${escA2(v?vehicleLabel(v.id):vehicleLabel(o.vehicleId)||'')}</b></div><div><span>Placa</span><b>${escA2(v?.plate||'')}</b></div><div class="wide"><span>Serviços contratados</span><b>${escA2(servicesText)}</b></div></div>
       </section>
@@ -2518,6 +2520,7 @@ window.a2V9Ready=true;
     if(d.notes!==undefined)o.notes=d.notes;
     if(d.notesEntry!==undefined||d.notesExit!==undefined)o.notes=[o.notesEntry,o.notesExit].filter(Boolean).join('\n\n');
     o.status=forcedStatus||d.status||o.status||'Aguardando check-in';
+    if(d.executionDate){o.executionDate=d.executionDate;if(o.status==='Concluída')o.completedAt=new Date(d.executionDate+'T12:00:00').toISOString();}
     const oldStart=o.inspectionStart||{}, oldEnd=o.inspectionEnd||{};
     const hasCheckControls=stage=>inspectionItems.some((_,i)=>document.getElementById(stage+'Check'+i));
     const getChecks=stage=>hasCheckControls(stage)?inspectionItems.filter((x,i)=>document.getElementById(stage+'Check'+i)?.checked):(stage==='start'?(oldStart.checks||[]):(oldEnd.checks||[]));
@@ -2543,7 +2546,7 @@ window.a2V9Ready=true;
       const persisted=JSON.parse(localStorage.getItem('a2orders')||'null');
       const saved=persisted?.find(x=>String(x.id)===oid);
       const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-      if(!saved || String(saved.kmEntry??'')!==String(o.kmEntry??'') || String(saved.kmExit??'')!==String(o.kmExit??'') || !same(saved.inspectionStart?.checks||[],o.inspectionStart?.checks||[]) || !same(saved.inspectionEnd?.checks||[],o.inspectionEnd?.checks||[]) || !same(saved.inspectionStart?.photos||[],o.inspectionStart?.photos||[]) || !same(saved.inspectionEnd?.photos||[],o.inspectionEnd?.photos||[]) || !same(saved.inspectionStart?.items||[],o.inspectionStart?.items||[]) || !same(saved.inspectionEnd?.items||[],o.inspectionEnd?.items||[])){
+      if(!saved || String(saved.executionDate??'')!==String(o.executionDate??'') || String(saved.completedAt??'')!==String(o.completedAt??'') || String(saved.kmEntry??'')!==String(o.kmEntry??'') || String(saved.kmExit??'')!==String(o.kmExit??'') || !same(saved.inspectionStart?.checks||[],o.inspectionStart?.checks||[]) || !same(saved.inspectionEnd?.checks||[],o.inspectionEnd?.checks||[]) || !same(saved.inspectionStart?.photos||[],o.inspectionStart?.photos||[]) || !same(saved.inspectionEnd?.photos||[],o.inspectionEnd?.photos||[]) || !same(saved.inspectionStart?.items||[],o.inspectionStart?.items||[]) || !same(saved.inspectionEnd?.items||[],o.inspectionEnd?.items||[])){
         alert('ATENÇÃO: o navegador não confirmou o salvamento desta OS. Isso pode ocorrer quando o armazenamento está cheio por causa das fotos. Não feche o aplicativo ainda. Faça uma cópia de segurança dos dados e tente reduzir a quantidade/tamanho das fotos.');
         return false;
       }
