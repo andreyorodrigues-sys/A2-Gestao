@@ -3000,6 +3000,11 @@ body{background:#080a0d;color:var(--text)}
 @media(max-width:360px){.view .stats,.view .a2-grid,.view .kpi-grid,.view .report-grid,.view .dashboard-grid,.view .metrics-grid{gap:8px}.view .kpi,.view .stat{padding:13px 10px}}
 @media(min-width:600px){.app{max-width:560px}.view .stats,.view .a2-grid,.view .kpi-grid,.view .report-grid,.view .dashboard-grid,.view .metrics-grid{gap:14px}}
 @media(prefers-reduced-motion:reduce){.view button,.view .primary,.view .secondary{transition:none}}
+
+/* A2 — Data e KM lado a lado na edição da OS */
+.a2-os-data{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;align-items:end}
+.a2-os-data>label{display:block!important;min-width:0!important;width:100%!important}
+.a2-os-data>label input,.a2-os-data>label select{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
 </style>
 
 
