@@ -2516,6 +2516,9 @@ window.a2V9Ready=true;
     const oid=String(id||d.id||'');
     const o=orders.find(x=>String(x.id)===oid);
     if(!o){alert('OS não encontrada.');return false;}
+    // Os vínculos são imutáveis durante a edição da OS: nunca substituir por campos ausentes/vazios.
+    const preservedClientId=o.clientId;
+    const preservedVehicleId=o.vehicleId;
     const kmEntry=d.kmEntry!==undefined?d.kmEntry:(d.km!==undefined?d.km:(o.kmEntry??o.km??''));
     const kmExit=d.kmExit!==undefined?d.kmExit:(o.kmExit??'');
     o.kmEntry=kmEntry; o.kmExit=kmExit; o.km=kmEntry;
@@ -2524,7 +2527,13 @@ window.a2V9Ready=true;
     if(d.notes!==undefined)o.notes=d.notes;
     if(d.notesEntry!==undefined||d.notesExit!==undefined)o.notes=[o.notesEntry,o.notesExit].filter(Boolean).join('\n\n');
     o.status=forcedStatus||d.status||o.status||'Aguardando check-in';
-    if(d.executionDate){o.executionDate=d.executionDate;if(o.status==='Concluída')o.completedAt=new Date(d.executionDate+'T12:00:00').toISOString();}
+    if(Object.prototype.hasOwnProperty.call(d,'executionDate')){
+      o.executionDate=d.executionDate||'';
+      if(o.status==='Concluída'&&d.executionDate)o.completedAt=new Date(d.executionDate+'T12:00:00').toISOString();
+    }
+    // A edição de data, KM ou vistoria não altera cliente/veículo vinculados à OS.
+    o.clientId=preservedClientId;
+    o.vehicleId=preservedVehicleId;
     const oldStart=o.inspectionStart||{}, oldEnd=o.inspectionEnd||{};
     const hasCheckControls=stage=>inspectionItems.some((_,i)=>document.getElementById(stage+'Check'+i));
     const getChecks=stage=>hasCheckControls(stage)?inspectionItems.filter((x,i)=>document.getElementById(stage+'Check'+i)?.checked):(stage==='start'?(oldStart.checks||[]):(oldEnd.checks||[]));
@@ -2550,7 +2559,7 @@ window.a2V9Ready=true;
       const persisted=JSON.parse(localStorage.getItem('a2orders')||'null');
       const saved=persisted?.find(x=>String(x.id)===oid);
       const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-      if(!saved || String(saved.executionDate??'')!==String(o.executionDate??'') || String(saved.completedAt??'')!==String(o.completedAt??'') || String(saved.kmEntry??'')!==String(o.kmEntry??'') || String(saved.kmExit??'')!==String(o.kmExit??'') || !same(saved.inspectionStart?.checks||[],o.inspectionStart?.checks||[]) || !same(saved.inspectionEnd?.checks||[],o.inspectionEnd?.checks||[]) || !same(saved.inspectionStart?.photos||[],o.inspectionStart?.photos||[]) || !same(saved.inspectionEnd?.photos||[],o.inspectionEnd?.photos||[]) || !same(saved.inspectionStart?.items||[],o.inspectionStart?.items||[]) || !same(saved.inspectionEnd?.items||[],o.inspectionEnd?.items||[])){
+      if(!saved || String(saved.clientId??'')!==String(preservedClientId??'') || String(saved.vehicleId??'')!==String(preservedVehicleId??'') || String(saved.executionDate??'')!==String(o.executionDate??'') || String(saved.completedAt??'')!==String(o.completedAt??'') || String(saved.kmEntry??'')!==String(o.kmEntry??'') || String(saved.kmExit??'')!==String(o.kmExit??'') || !same(saved.inspectionStart?.checks||[],o.inspectionStart?.checks||[]) || !same(saved.inspectionEnd?.checks||[],o.inspectionEnd?.checks||[]) || !same(saved.inspectionStart?.photos||[],o.inspectionStart?.photos||[]) || !same(saved.inspectionEnd?.photos||[],o.inspectionEnd?.photos||[]) || !same(saved.inspectionStart?.items||[],o.inspectionStart?.items||[]) || !same(saved.inspectionEnd?.items||[],o.inspectionEnd?.items||[])){
         alert('ATENÇÃO: o navegador não confirmou o salvamento desta OS. Isso pode ocorrer quando o armazenamento está cheio por causa das fotos. Não feche o aplicativo ainda. Faça uma cópia de segurança dos dados e tente reduzir a quantidade/tamanho das fotos.');
         return false;
       }
