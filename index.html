@@ -3001,10 +3001,14 @@ body{background:#080a0d;color:var(--text)}
 @media(min-width:600px){.app{max-width:560px}.view .stats,.view .a2-grid,.view .kpi-grid,.view .report-grid,.view .dashboard-grid,.view .metrics-grid{gap:14px}}
 @media(prefers-reduced-motion:reduce){.view button,.view .primary,.view .secondary{transition:none}}
 
-/* A2 — Data e KM lado a lado na edição da OS */
-.a2-os-data{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;align-items:end}
-.a2-os-data>label{display:block!important;min-width:0!important;width:100%!important}
-.a2-os-data>label input,.a2-os-data>label select{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+/* A2 — Edição da OS: data e KM compactos, sempre lado a lado no iPhone */
+.a2-os-data{display:flex!important;flex-flow:row wrap!important;align-items:flex-end!important;gap:8px!important;width:100%!important;min-width:0!important}
+.a2-os-data>label{display:block!important;flex:0 0 calc(50% - 4px)!important;width:calc(50% - 4px)!important;max-width:calc(50% - 4px)!important;min-width:0!important;margin:0!important}
+.a2-os-data>label:nth-child(3){flex:0 0 100%!important;width:100%!important;max-width:100%!important}
+.a2-os-data>label input,.a2-os-data>label select{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important;padding:9px 7px!important;font-size:13px!important}
+.a2-os-data>label:first-child input[type=date]{font-size:12px!important;letter-spacing:-.35px!important}
+.a2-os-data>label:nth-child(2) input[type=number]{font-size:13px!important}
+@media(max-width:390px){.a2-os-data{gap:6px!important}.a2-os-data>label{flex-basis:calc(50% - 3px)!important;width:calc(50% - 3px)!important;max-width:calc(50% - 3px)!important}.a2-os-data>label:nth-child(3){flex-basis:100%!important;width:100%!important;max-width:100%!important}.a2-os-data>label:first-child input[type=date]{padding-left:5px!important;padding-right:3px!important;font-size:11px!important}}
 </style>
 
 
