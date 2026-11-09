@@ -1994,7 +1994,6 @@ window.a2V9Ready=true;
     <button type="button" class="secondary" onclick="saveOSOnly('${escA2(o.id)}')">SALVAR ALTERAÇÕES</button>
     <button type="button" class="primary" onclick="startOSService('${escA2(o.id)}')">▶ INICIAR</button>
     <button type="button" class="primary" onclick="finishOS('${escA2(o.id)}')">✓ FINALIZAR</button>
-    <button type="button" class="secondary a2-delete-os" onclick="a2DeleteOS('${escA2(o.id)}')">🗑 EXCLUIR</button>
   </div>
   <div class="a2-os-command-stack">
     <button type="button" class="secondary" onclick="generateOSPDF('${escA2(o.id)}')">👁 VISUALIZAR PDF</button>
@@ -2134,7 +2133,7 @@ window.a2V9Ready=true;
   const oldRender=window.renderOrders;
   window.renderOrders=function(){
     const el=document.getElementById('osList'); if(!el)return; orders.forEach(o=>{if(window.a2EnsureOSNumber)window.a2EnsureOSNumber(o)});
-    el.innerHTML=orders.length?orders.slice().reverse().map(o=>{const si=o.inspectionStart?.photos?.length||0,ei=o.inspectionEnd?.photos?.length||0;return `<div class="item os-card"><div class="os-info"><h3>${escA2(numOS(o))} • ${escA2(clientName(o.clientId))}</h3><p>${escA2(vehicleLabel(o.vehicleId))}<br>${escA2(o.service||'')}<br><span class="pill">${escA2(osStatus(o))}</span><br>📸 Entrada: ${si} • Saída: ${ei}</p></div><div class="item-actions os-actions"><button type="button" class="mini a2-edit-os" onclick="window.a2OpenOS('${escA2(o.id)}')">Editar OS</button><button class="mini" onclick="showInspection('${escA2(o.id)}')">Checklist</button><button class="mini" onclick="generateOSPDFAndWhatsApp('${escA2(o.id)}')">📄 PDF + WhatsApp</button><button class="mini" onclick="a2DeleteOS('${escA2(o.id)}')">🗑 Excluir</button></div></div>`}).join(''):'<div class="empty">Nenhuma OS cadastrada.</div>';
+    el.innerHTML=orders.length?orders.slice().reverse().map(o=>{const si=o.inspectionStart?.photos?.length||0,ei=o.inspectionEnd?.photos?.length||0;return `<div class="item os-card"><div class="os-info"><h3>${escA2(numOS(o))} • ${escA2(clientName(o.clientId))}</h3><p>${escA2(vehicleLabel(o.vehicleId))}<br>${escA2(o.service||'')}<br><span class="pill">${escA2(osStatus(o))}</span><br>📸 Entrada: ${si} • Saída: ${ei}</p></div><div class="item-actions os-actions"><button type="button" class="mini a2-edit-os" onclick="window.a2OpenOS('${escA2(o.id)}')">Editar OS</button><button class="mini" onclick="showInspection('${escA2(o.id)}')">Checklist</button><button class="mini" onclick="generateOSPDFAndWhatsApp('${escA2(o.id)}')">📄 PDF + WhatsApp</button><button type="button" class="mini danger a2-delete-os-list" onclick="a2DeleteOS('${escA2(o.id)}')">🗑 Excluir OS</button></div></div>`}).join(''):'<div class="empty">Nenhuma OS cadastrada.</div>';
   };
   const st=document.createElement('style');st.textContent=`
     /* Ações de Orçamentos: visual único, limpo e branco */
