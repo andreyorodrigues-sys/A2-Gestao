@@ -2017,17 +2017,29 @@ window.a2V9Ready=true;
     saveAll(); renderOrders(); showToast();
   }
   window.a2DeleteOS=function(id){
-    const o=orders.find(x=>String(x.id)===String(id));
+    const key=String(id);
+    const o=orders.find(x=>String(x.id)===key);
     if(!o)return;
     const num=numOS(o);
-    if(!confirm('Excluir a '+num+'?\n\nEssa ação removerá a OS e seu registro do histórico. O orçamento e o cadastro do cliente/veículo serão preservados.'))return;
-    orders=orders.filter(x=>String(x.id)!==String(id));
-    agenda.forEach(a=>{if(String(a.orderId)===String(id))a.orderId='';});
-    budgets.forEach(b=>{if(String(b.orderId)===String(id))b.orderId='';});
-    history=history.filter(h=>String(h.ref||'')!==String(id));
+    const client=clientName(o.clientId)||'Cliente não identificado';
+    const vehicle=vehicleLabel(o.vehicleId)||'Veículo não identificado';
+    const linkedReceivable=receivables.find(r=>String(r.id)===String(o.receivableId||'')||String(r.orderId||'')===key);
+    const paid=linkedReceivable?payments.filter(p=>String(p.receivableId)===String(linkedReceivable.id)).reduce((sum,p)=>sum+Number(p.amount||0),0):0;
+    const financeNote=linkedReceivable
+      ? '\\n\\nA conta a receber e os pagamentos registrados serão preservados; apenas o vínculo com esta OS será removido.'
+      : '';
+    if(!confirm('Excluir '+num+'?\\n\\nCliente: '+client+'\\nVeículo: '+vehicle+'\\n\\nA OS e seu registro no histórico serão removidos. O orçamento, o cliente e o veículo serão preservados.'+financeNote+'\\n\\nEsta ação não poderá ser desfeita.'))return;
+    orders=orders.filter(x=>String(x.id)!==key);
+    agenda.forEach(a=>{if(String(a.orderId)===key)a.orderId='';});
+    budgets.forEach(b=>{if(String(b.orderId)===key)b.orderId='';});
+    // Preserva a conta e os recebimentos: a cobrança pertence ao orçamento,
+    // não deve ser apagada junto com uma OS duplicada.
+    receivables.forEach(r=>{if(String(r.orderId||'')===key)r.orderId='';});
+    history=history.filter(h=>String(h.ref||'')!==key);
     saveAll();
     renderOrders();
     renderHome();
+    if(typeof renderFinance==='function')renderFinance();
     go('ordens');
     showToast();
   };
