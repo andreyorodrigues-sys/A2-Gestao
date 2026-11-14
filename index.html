@@ -1026,8 +1026,25 @@ renderHome();renderClients();renderVehicles();renderServices();renderFinance();
     const total=arr.reduce((a,x)=>a+Number(x.value||0),0), old=budgets.find(x=>x.id===d.id); const o={id:d.id||uid(),clientId:c.id,vehicleId:v.id,name:c.name,car:vehicleLabel(v.id),category:v.category,services:arr,service:arr.map(x=>x.service).join(' + '),serviceId:arr[0].serviceId,value:total,totalValue:total,status:d.status,created:old?.created||new Date().toLocaleDateString('pt-BR')};
     const i=budgets.findIndex(x=>x.id===o.id);i>=0?budgets[i]=o:budgets.push(o);saveAll();go('orcamentos');renderBudgets();showToast();
   };
+  window.a2DeleteBudget=function(id){
+    const b=budgets.find(x=>String(x.id)===String(id));
+    if(!b){alert('Orçamento não encontrado.');return;}
+    const linkedOrder=orders.some(o=>String(o.budgetId)===String(id)||String(o.id)===String(b.orderId));
+    const linkedReceivable=receivables.some(r=>String(r.budgetId)===String(id)||String(r.id)===String(b.receivableId));
+    const linkedAgenda=agenda.some(a=>String(a.budgetId)===String(id));
+    if(linkedOrder){alert('Este orçamento possui uma OS vinculada. Exclua ou resolva a OS antes de remover o orçamento.');return;}
+    if(linkedReceivable){alert('Este orçamento possui uma conta a receber vinculada. Resolva o vínculo financeiro antes de remover o orçamento.');return;}
+    if(linkedAgenda){alert('Este orçamento possui um agendamento vinculado. Remova ou desvincule o agendamento antes de excluir o orçamento.');return;}
+    if(!confirm('Excluir este orçamento definitivamente?\n\nO cadastro do cliente, veículo e serviços será preservado.'))return;
+    budgets=budgets.filter(x=>String(x.id)!==String(id));
+    if(typeof approvals!=='undefined') approvals=approvals.filter(x=>String(x.budgetId)!==String(id));
+    saveAll();
+    renderBudgets();
+    try{renderHome()}catch(e){}
+    try{showToast()}catch(e){}
+  };
   const oldRender=window.renderBudgets;
-  window.renderBudgets=function(){const el=document.getElementById('budgetList');if(!el)return;el.innerHTML=budgets.length?budgets.slice().reverse().map(b=>{const arr=rowsForBudget(b),total=Number(b.totalValue??b.value??arr.reduce((a,x)=>a+Number(x.value||0),0));return `<div class="item"><div><h3>${esc(b.name||'')} • ${esc(b.car||'')}</h3><p>${arr.map(x=>`${esc(x.service||'Serviço')} • ${money(x.value)}`).join('<br>')}<br><span class="pill">${esc(b.status||'Aberto')}</span><br><span class="smallnote">Total: <b class="orange">${money(total)}</b></span></p></div><div><button class="mini" onclick="event.stopPropagation();openForm('orcamento','${b.id}')">Editar</button><button class="mini" onclick="quickBudgetWA('${b.id}')">WhatsApp</button><button class="mini" onclick="event.preventDefault();event.stopPropagation();window.a2AgendarSeguro('${b.id}')">Agendar</button><button class="mini a2-gerar-os" onclick="event.preventDefault();event.stopPropagation();window.a2GerarOSSeguro('${b.id}')">${b.orderId?'Abrir OS':'GERAR OS'}</button></div></div>`}).join(''):'<div class="empty">Nenhum orçamento registrado.</div>'};
+  window.renderBudgets=function(){const el=document.getElementById('budgetList');if(!el)return;el.innerHTML=budgets.length?budgets.slice().reverse().map(b=>{const arr=rowsForBudget(b),total=Number(b.totalValue??b.value??arr.reduce((a,x)=>a+Number(x.value||0),0));return `<div class="item"><div><h3>${esc(b.name||'')} • ${esc(b.car||'')}</h3><p>${arr.map(x=>`${esc(x.service||'Serviço')} • ${money(x.value)}`).join('<br>')}<br><span class="pill">${esc(b.status||'Aberto')}</span><br><span class="smallnote">Total: <b class="orange">${money(total)}</b></span></p></div><div><button class="mini" onclick="event.stopPropagation();openForm('orcamento','${b.id}')">Editar</button><button class="mini" onclick="quickBudgetWA('${b.id}')">WhatsApp</button><button class="mini danger" onclick="event.preventDefault();event.stopPropagation();window.a2DeleteBudget('${b.id}')">Excluir</button><button class="mini" onclick="event.preventDefault();event.stopPropagation();window.a2AgendarSeguro('${b.id}')">Agendar</button><button class="mini a2-gerar-os" onclick="event.preventDefault();event.stopPropagation();window.a2GerarOSSeguro('${b.id}')">${b.orderId?'Abrir OS':'GERAR OS'}</button></div></div>`}).join(''):'<div class="empty">Nenhum orçamento registrado.</div>'};
 })();
 
 </script>
