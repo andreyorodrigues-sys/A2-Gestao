@@ -2983,7 +2983,35 @@ function saveCatalogPDF(){
   setTimeout(()=>window.open("https://wa.me/"+(String(c.phone||"").replace(/\D/g)?"55"+String(c.phone).replace(/\D/g):"")+"?text="+encodeURIComponent(msg),"_blank"),450);
  };
  const oldRender=window.renderBudgets;
- window.renderBudgets=function(){oldRender();const cards=[...document.querySelectorAll("#budgetList .item")],list=budgets.slice().reverse();cards.forEach((card,i)=>{const b=list[i],actions=card.lastElementChild;if(!b||!actions)return;if(!actions.querySelector("[data-a2-budget-delete]")){const del=document.createElement("button");del.type="button";del.className="mini danger";del.textContent="Excluir";del.setAttribute("data-a2-budget-delete","1");del.setAttribute("aria-label","Excluir orçamento");del.addEventListener("click",ev=>{ev.preventDefault();ev.stopPropagation();if(typeof window.a2DeleteBudget==="function")window.a2DeleteBudget(b.id);else alert("A exclusão de orçamentos não foi inicializada. Recarregue a página.");});actions.appendChild(del)}const pdf=document.createElement("button");pdf.className="mini";pdf.textContent="PDF";pdf.onclick=()=>a2GenerateBudgetPDF(b.id);const send=document.createElement("button");send.className="mini wa";send.textContent="Enviar";send.onclick=()=>a2ShareBudgetWhatsApp(b.id);actions.append(pdf,send)})};
+ window.renderBudgets=function(){
+   oldRender();
+   const cards=[...document.querySelectorAll("#budgetList .item")],list=budgets.slice().reverse();
+   cards.forEach((card,i)=>{
+     const b=list[i],actions=card.lastElementChild;
+     if(!b||!actions)return;
+     let del=actions.querySelector("[data-a2-budget-delete]");
+     if(!del){
+       del=document.createElement("button");del.type="button";del.className="mini danger";del.textContent="Excluir";
+       del.setAttribute("data-a2-budget-delete","1");del.setAttribute("aria-label","Excluir orçamento");
+       del.addEventListener("click",ev=>{ev.preventDefault();ev.stopPropagation();if(typeof window.a2DeleteBudget==="function")window.a2DeleteBudget(b.id);else alert("A exclusão de orçamentos não foi inicializada. Recarregue a página.");});
+     }
+     let pdf=actions.querySelector("[data-a2-budget-pdf]");
+     if(!pdf){pdf=document.createElement("button");pdf.className="mini";pdf.textContent="PDF";pdf.setAttribute("data-a2-budget-pdf","1");pdf.addEventListener("click",()=>a2GenerateBudgetPDF(b.id));}
+     let send=actions.querySelector("[data-a2-budget-send]");
+     if(!send){send=document.createElement("button");send.className="mini wa";send.textContent="Enviar";send.setAttribute("data-a2-budget-send","1");send.addEventListener("click",()=>a2ShareBudgetWhatsApp(b.id));}
+     const findButton=(selector,test)=>actions.querySelector(selector)||[...actions.querySelectorAll("button")].find(test);
+     const approval=findButton(".a2-v9-approve",()=>false);
+     const openOS=findButton(".a2-gerar-os",()=>false);
+     const schedule=findButton('button[onclick*="a2AgendarSeguro"]',()=>false);
+     const edit=findButton('button[onclick*="openForm"]',el=>/openForm\\(['"]orcamento/.test(el.getAttribute("onclick")||""));
+     const whatsapp=findButton('button[onclick*="quickBudgetWA"]',()=>false);
+     del.style.marginLeft="8px";
+     const ordered=[pdf,send,approval,openOS,schedule,edit,whatsapp,del].filter(Boolean);
+     const known=new Set(ordered);
+     [...actions.children].filter(el=>!known.has(el)).forEach(el=>ordered.splice(ordered.length-1,0,el));
+     actions.append(...ordered);
+   });
+ };
  const oldRefresh=window.refresh;
  window.refresh=function(id){if(oldRefresh)oldRefresh(id);if(id==="historico")a2ApplyHistoryFilters()};
 })();
