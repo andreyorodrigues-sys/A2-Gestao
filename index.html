@@ -3033,6 +3033,85 @@ body{background:#080a0d;color:var(--text)}
 </style>
 
 
+<script type="application/x-a2-gated" data-a2-gated="1" id="a2-delete-catalog-records">
+(function(){
+  'use strict';
+  const same=(a,b)=>String(a??'')===String(b??'');
+  const linked=(rows,predicate)=>Array.isArray(rows)&&rows.some(predicate);
+  function persistRemoval(collection,id,render){
+    const index=collection.findIndex(x=>same(x.id,id));
+    if(index<0){alert('Cadastro não encontrado. Atualize a lista e tente novamente.');return;}
+    const record=collection[index];
+    collection.splice(index,1);
+    try{saveAll();}
+    catch(err){collection.splice(index,0,record);alert('Não foi possível excluir o cadastro. Os dados foram mantidos.\n\n'+(err?.message||''));return;}
+    try{render();}catch(err){console.warn('A2: atualização da lista após exclusão:',err);}
+    try{renderHome();}catch(err){}
+    try{showToast();}catch(err){}
+  }
+  window.a2DeleteClient=function(id){
+    const c=clients.find(x=>same(x.id,id));if(!c)return;
+    const checks=[
+      ['veículos',linked(vehicles,x=>same(x.clientId,id))],
+      ['orçamentos',linked(budgets,x=>same(x.clientId,id))],
+      ['ordens de serviço',linked(orders,x=>same(x.clientId,id))],
+      ['agendamentos',linked(agenda,x=>same(x.clientId,id))],
+      ['contas a receber',linked(receivables,x=>same(x.clientId,id))],
+      ['recebimentos',linked(payments,x=>same(x.clientId,id))],
+      ['lançamentos financeiros',linked(transactions,x=>same(x.clientId,id))],
+      ['atividades do CRM',linked(crmActivities,x=>same(x.clientId,id))]
+    ];
+    const used=checks.filter(x=>x[1]).map(x=>x[0]);
+    if(used.length){alert('Este cliente não pode ser excluído porque possui vínculos com: '+used.join(', ')+'.\n\nIsso protege o histórico e os dados financeiros.');return;}
+    if(!confirm('Excluir definitivamente o cliente "'+c.name+'"?\n\nEsta ação não poderá ser desfeita.'))return;
+    persistRemoval(clients,id,renderClients);
+  };
+  window.a2DeleteVehicle=function(id){
+    const v=vehicles.find(x=>same(x.id,id));if(!v)return;
+    const checks=[
+      ['orçamentos',linked(budgets,x=>same(x.vehicleId,id))],
+      ['ordens de serviço',linked(orders,x=>same(x.vehicleId,id))],
+      ['agendamentos',linked(agenda,x=>same(x.vehicleId,id))],
+      ['histórico',linked(history,x=>same(x.vehicleId,id))],
+      ['manutenções',linked(maintenance,x=>same(x.vehicleId,id))]
+    ];
+    const used=checks.filter(x=>x[1]).map(x=>x[0]);
+    if(used.length){alert('Este veículo não pode ser excluído porque possui vínculos com: '+used.join(', ')+'.\n\nIsso protege o histórico de atendimento.');return;}
+    if(!confirm('Excluir definitivamente o veículo "'+[v.brand,v.model,v.plate].filter(Boolean).join(' ')+'"?\n\nEsta ação não poderá ser desfeita.'))return;
+    persistRemoval(vehicles,id,renderVehicles);
+  };
+  window.a2DeleteService=function(id){
+    const service=services.find(x=>same(x.id,id));if(!service)return;
+    const inRows=row=>Array.isArray(row?.services)&&row.services.some(x=>same(x.serviceId,id));
+    const checks=[
+      ['orçamentos',linked(budgets,x=>same(x.serviceId,id)||inRows(x))],
+      ['ordens de serviço',linked(orders,x=>same(x.serviceId,id)||inRows(x))],
+      ['custos de serviços',linked(serviceCosts,x=>same(x.serviceId,id))]
+    ];
+    const used=checks.filter(x=>x[1]).map(x=>x[0]);
+    if(used.length){alert('Este serviço não pode ser excluído porque está vinculado a: '+used.join(', ')+'.\n\nIsso evita alterar orçamentos, OS e custos já registrados.');return;}
+    if(!confirm('Excluir definitivamente o serviço "'+service.name+'"?\n\nEsta ação não poderá ser desfeita.'))return;
+    persistRemoval(services,id,renderServices);
+  };
+  function addDeleteButtons(listId,extract,handler,label){
+    const host=document.getElementById(listId);if(!host)return;
+    [...host.children].forEach(row=>{
+      if(!row.classList.contains('item'))return;
+      const actions=row.querySelector('.item-actions');if(!actions||actions.querySelector('[data-a2-delete]'))return;
+      const target=row.querySelector('[onclick]');const raw=target?.getAttribute('onclick')||'';
+      const id=extract(raw);if(!id)return;
+      const btn=document.createElement('button');btn.type='button';btn.className='mini';btn.textContent='Excluir';btn.setAttribute('data-a2-delete','1');btn.setAttribute('aria-label',label);
+      btn.addEventListener('click',()=>handler(id));actions.appendChild(btn);
+    });
+  }
+  const oldClients=window.renderClients;
+  window.renderClients=function(){oldClients();addDeleteButtons('clientList',x=>x.match(/showClient\('([^']+)'\)/)?.[1],window.a2DeleteClient,'Excluir cliente');};
+  const oldVehicles=window.renderVehicles;
+  window.renderVehicles=function(){oldVehicles();addDeleteButtons('vehicleList',x=>x.match(/showVehicle\('([^']+)'\)/)?.[1],window.a2DeleteVehicle,'Excluir veículo');};
+  const oldServices=window.renderServices;
+  window.renderServices=function(){oldServices();addDeleteButtons('serviceList',x=>x.match(/showService\('([^']+)'\)/)?.[1],window.a2DeleteService,'Excluir serviço');};
+})();
+</script>
 <script src="./config.js"></script>
 <script id="A2_AUTH_GATE_V1">
 (function(){
