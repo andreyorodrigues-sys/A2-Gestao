@@ -3056,6 +3056,61 @@ body{background:#080a0d;color:var(--text)}
     if(message)msg(message);
     setBusy(false);
   }
+  // Persistência redundante dos dados A2: espelha todas as chaves a2* no IndexedDB.
+  // Antes de iniciar os módulos, recupera somente chaves ausentes do localStorage.
+  let a2PersistDBPromise=null;
+  function a2OpenPersistDB(){
+    if(!('indexedDB' in window))return Promise.reject(new Error('IndexedDB indisponível'));
+    if(a2PersistDBPromise)return a2PersistDBPromise;
+    a2PersistDBPromise=new Promise((resolve,reject)=>{
+      const req=indexedDB.open('A2_Gestao_Persistencia',1);
+      req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('records'))db.createObjectStore('records',{keyPath:'key'});};
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('Não foi possível abrir o armazenamento redundante'));
+      req.onblocked=()=>reject(new Error('Armazenamento redundante bloqueado'));
+    }).catch(err=>{a2PersistDBPromise=null;throw err;});
+    return a2PersistDBPromise;
+  }
+  async function a2RestorePersistentData(){
+    try{
+      const db=await a2OpenPersistDB();
+      const rows=await new Promise((resolve,reject)=>{
+        const tx=db.transaction('records','readonly'),req=tx.objectStore('records').getAll();
+        req.onsuccess=()=>resolve(req.result||[]);
+        req.onerror=()=>reject(req.error||new Error('Falha ao ler cópia redundante'));
+      });
+      let restored=0;
+      for(const row of rows){
+        if(!row||typeof row.key!=='string'||!row.key.startsWith('a2')||typeof row.value!=='string')continue;
+        if(localStorage.getItem(row.key)===null){localStorage.setItem(row.key,row.value);restored++;}
+      }
+      if(restored)console.info('A2: '+restored+' chaves recuperadas da cópia persistente.');
+      return restored;
+    }catch(err){console.warn('A2: cópia redundante indisponível; mantendo armazenamento principal.',err);return 0;}
+  }
+  function a2InstallPersistentMirror(){
+    if(window.__a2PersistentMirrorInstalled)return;
+    const proto=Storage.prototype,originalSet=proto.setItem,originalRemove=proto.removeItem;
+    proto.setItem=function(key,value){
+      const result=originalSet.call(this,key,value);
+      if(this===localStorage&&String(key).startsWith('a2')){
+        const k=String(key),v=String(value);
+        a2OpenPersistDB().then(db=>{const tx=db.transaction('records','readwrite');tx.objectStore('records').put({key:k,value:v,savedAt:Date.now()});})
+          .catch(err=>console.warn('A2: espelhamento de '+k+' não confirmado.',err));
+      }
+      return result;
+    };
+    proto.removeItem=function(key){
+      const result=originalRemove.call(this,key);
+      if(this===localStorage&&String(key).startsWith('a2')){
+        const k=String(key);
+        a2OpenPersistDB().then(db=>{const tx=db.transaction('records','readwrite');tx.objectStore('records').delete(k);})
+          .catch(err=>console.warn('A2: remoção redundante de '+k+' não confirmada.',err));
+      }
+      return result;
+    };
+    window.__a2PersistentMirrorInstalled=true;
+  }
   let appScriptsLoaded=false;
   let appScriptsPromise=null;
   async function activateAppScripts(){
@@ -3063,6 +3118,9 @@ body{background:#080a0d;color:var(--text)}
     // Evita carregar os scripts duas vezes quando SIGNED_IN e o formulário concluem juntos.
     if(appScriptsPromise)return appScriptsPromise;
     appScriptsPromise=(async()=>{
+      // Recupera dados ausentes antes que os módulos carreguem seus arrays em memória.
+      await a2RestorePersistentData();
+      a2InstallPersistentMirror();
       // Aguarda o DOMContentLoaded real antes de ativar scripts legados.
       // Assim, o evento sintético abaixo será o único disparo para os listeners adicionados dinamicamente.
       if(document.readyState==='loading'){
