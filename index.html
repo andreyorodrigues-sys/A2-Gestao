@@ -2919,8 +2919,12 @@ body{background:#080a0d;color:var(--text)}
           pdf.setAttribute('data-a2-budget-pdf','1');pdf.setAttribute('aria-label','Gerar PDF do orçamento');
           pdf.addEventListener('click',()=>window.a2GenerateBudgetPDF(b.id));
         }
-        const send=actions.querySelector('button[onclick*="quickBudgetWA"]');
-        if(send){send.textContent='Enviar';send.setAttribute('aria-label','Enviar orçamento pelo WhatsApp');send.onclick=null;send.addEventListener('click',()=>window.a2ShareBudgetWhatsApp(b.id));}
+        let send=actions.querySelector('[data-a2-budget-send]')||actions.querySelector('button[onclick*="quickBudgetWA"]');
+        if(send){
+          send.textContent='Enviar';send.setAttribute('aria-label','Enviar orçamento pelo WhatsApp');
+          send.setAttribute('data-a2-budget-send','1');send.removeAttribute('onclick');
+          if(!send.dataset.a2SendBound){send.addEventListener('click',()=>window.a2ShareBudgetWhatsApp(b.id));send.dataset.a2SendBound='1';}
+        }
         const approval=actions.querySelector('.a2-v9-approve');
         const openOS=actions.querySelector('.a2-gerar-os');
         const schedule=actions.querySelector('button[onclick*="a2AgendarSeguro"]');
