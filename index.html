@@ -1840,61 +1840,7 @@ window.a2V9Ready=true;
 
 
 
-<script id="a2-home-period-filter-fix">
-(function(){
-  const previousRenderHome=window.renderHome;
-  function selectedRange(){
-    const now=new Date(),p=localStorage.a2RevenuePeriod||'month';
-    let ini,fim;
-    if(p==='prevMonth'){ini=new Date(now.getFullYear(),now.getMonth()-1,1);fim=new Date(now.getFullYear(),now.getMonth(),0);}
-    else if(p==='30days'){fim=new Date(now.getFullYear(),now.getMonth(),now.getDate());ini=new Date(fim.getTime()-29*86400000);}
-    else if(p==='year'){ini=new Date(now.getFullYear(),0,1);fim=new Date(now.getFullYear(),11,31);}
-    else if(p==='custom'){
-      const parse=v=>{const m=String(v||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;};
-      ini=parse(localStorage.a2RevenueStart);fim=parse(localStorage.a2RevenueEnd);
-      if(!ini||!fim){ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
-    }else{ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
-    const key=d=>a2DayKey(d);
-    return {start:key(ini),end:key(fim)};
-  }
-  function refreshPeriodIndicators(){
-    const range=selectedRange();
-    const inPeriod=value=>{const k=a2DateKey(value);return !!k&&k>=range.start&&k<=range.end;};
-    const status=x=>a2NormStatus(x.status);
-    const periodBudgets=budgets.filter(b=>inPeriod(b.created||b.createdAt||b.date));
-    const periodAgenda=agenda.filter(a=>inPeriod(a.date||a.scheduledAt||a.createdAt));
-    const periodOrders=orders.filter(o=>inPeriod(o.completedAt||o.createdAt||o.created));
-    const completed=periodOrders.filter(o=>['concluida','concluido','finalizado','finalizada'].includes(status(o)));
-    const active=periodOrders.filter(o=>!['concluida','concluido','finalizado','finalizada','pago'].includes(status(o)));
-    const executing=periodOrders.filter(o=>status(o)==='em execucao');
-    const waiting=periodOrders.filter(o=>status(o)==='aguardando pagamento');
-    const paid=periodOrders.filter(o=>status(o)==='pago');
-    const clientIds=new Set(),vehicleIds=new Set();
-    const add=(set,id,name)=>{const v=id!=null&&String(id).trim()?String(id):String(name||'').trim().toLocaleLowerCase('pt-BR');if(v)set.add(v);};
-    periodOrders.forEach(o=>{add(clientIds,o.clientId,o.client);add(vehicleIds,o.vehicleId,o.car);});
-    periodBudgets.forEach(b=>{add(clientIds,b.clientId,b.name||b.client);add(vehicleIds,b.vehicleId,b.car);});
-    periodAgenda.forEach(a=>{add(clientIds,a.clientId,a.client);add(vehicleIds,a.vehicleId,a.car);});
-    const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=String(n);};
-    set('homeClients',clientIds.size);
-    set('homeVehicles',vehicleIds.size);
-    set('homeOS',active.length);
-    set('pipeBudgets',periodBudgets.filter(b=>!['recusado','aprovado'].includes(status(b))).length);
-    set('pipeAgenda',periodAgenda.filter(a=>!['cancelado','concluido'].includes(status(a))).length);
-    set('pipeOrders',executing.length);
-    set('pipeDone',completed.length);
-    set('pipePending',waiting.length);
-    set('pipePaid',paid.length);
-    const labels=document.querySelectorAll('#home .a2-resumo-grid .stat .label');
-    if(labels[0])labels[0].textContent='Clientes no período';
-    if(labels[1])labels[1].textContent='Veículos no período';
-    if(labels[2])labels[2].textContent='OS abertas no período';
-  }
-  window.renderHome=function(){
-    if(typeof previousRenderHome==='function')previousRenderHome();
-    refreshPeriodIndicators();
-  };
-})();
-</script>
+
 
 </body></html>`;
     popup.document.open();
@@ -3003,6 +2949,61 @@ body{background:#080a0d;color:var(--text)}
 #budgetList .item>div:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
 #budgetList [data-a2-budget-delete]{color:#ff9097;border-color:#743b42}
 </style>
+
+<script id="a2-home-period-filter-fix">
+(function(){
+  const previousRenderHome=window.renderHome;
+  function selectedRange(){
+    const now=new Date(),p=localStorage.a2RevenuePeriod||'month';
+    let ini,fim;
+    if(p==='prevMonth'){ini=new Date(now.getFullYear(),now.getMonth()-1,1);fim=new Date(now.getFullYear(),now.getMonth(),0);}
+    else if(p==='30days'){fim=new Date(now.getFullYear(),now.getMonth(),now.getDate());ini=new Date(fim.getTime()-29*86400000);}
+    else if(p==='year'){ini=new Date(now.getFullYear(),0,1);fim=new Date(now.getFullYear(),11,31);}
+    else if(p==='custom'){
+      const parse=v=>{const m=String(v||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;};
+      ini=parse(localStorage.a2RevenueStart);fim=parse(localStorage.a2RevenueEnd);
+      if(!ini||!fim){ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
+    }else{ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
+    return {start:a2DayKey(ini),end:a2DayKey(fim)};
+  }
+  function refreshPeriodIndicators(){
+    const range=selectedRange();
+    const inPeriod=value=>{const k=a2DateKey(value);return !!k&&k>=range.start&&k<=range.end;};
+    const status=x=>a2NormStatus(x.status);
+    const periodBudgets=budgets.filter(b=>inPeriod(b.created||b.createdAt||b.date));
+    const periodAgenda=agenda.filter(a=>inPeriod(a.date||a.scheduledAt||a.createdAt));
+    const periodOrders=orders.filter(o=>inPeriod(o.completedAt||o.createdAt||o.created));
+    const completed=periodOrders.filter(o=>['concluida','concluido','finalizado','finalizada'].includes(status(o)));
+    const active=periodOrders.filter(o=>!['concluida','concluido','finalizado','finalizada','pago'].includes(status(o)));
+    const executing=periodOrders.filter(o=>status(o)==='em execucao');
+    const waiting=periodOrders.filter(o=>status(o)==='aguardando pagamento');
+    const paid=periodOrders.filter(o=>status(o)==='pago');
+    const clientIds=new Set(),vehicleIds=new Set();
+    const add=(set,id,name)=>{const v=id!=null&&String(id).trim()?String(id):String(name||'').trim().toLocaleLowerCase('pt-BR');if(v)set.add(v);};
+    periodOrders.forEach(o=>{add(clientIds,o.clientId,o.client);add(vehicleIds,o.vehicleId,o.car);});
+    periodBudgets.forEach(b=>{add(clientIds,b.clientId,b.name||b.client);add(vehicleIds,b.vehicleId,b.car);});
+    periodAgenda.forEach(a=>{add(clientIds,a.clientId,a.client);add(vehicleIds,a.vehicleId,a.car);});
+    const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=String(n);};
+    set('homeClients',clientIds.size);
+    set('homeVehicles',vehicleIds.size);
+    set('homeOS',active.length);
+    set('pipeBudgets',periodBudgets.filter(b=>!['recusado','aprovado'].includes(status(b))).length);
+    set('pipeAgenda',periodAgenda.filter(a=>!['cancelado','concluido'].includes(status(a))).length);
+    set('pipeOrders',executing.length);
+    set('pipeDone',completed.length);
+    set('pipePending',waiting.length);
+    set('pipePaid',paid.length);
+    const labels=document.querySelectorAll('#home .a2-resumo-grid .stat .label');
+    if(labels[0])labels[0].textContent='Clientes no período';
+    if(labels[1])labels[1].textContent='Veículos no período';
+    if(labels[2])labels[2].textContent='OS abertas no período';
+  }
+  window.renderHome=function(){
+    if(typeof previousRenderHome==='function')previousRenderHome();
+    refreshPeriodIndicators();
+  };
+})();
+</script>
 
 </body></html>
 
