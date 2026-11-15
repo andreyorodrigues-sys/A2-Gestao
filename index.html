@@ -3061,7 +3061,7 @@ body{background:#080a0d;color:var(--text)}
 <style id="a2-os-date-checklist-layout-fix">
 /* Ajuste solicitado: campo de data compacto e checklist em duas colunas no iPhone. */
 .a2-os-section .a2-budget-grid>.a2-os-date-field{
-  width:145px!important;
+  width:125px!important;
   max-width:100%!important;
   min-width:0!important;
   justify-self:start!important;
@@ -3108,10 +3108,14 @@ body{background:#080a0d;color:var(--text)}
   margin:0!important;
 }
 .a2-os-inspection .check-item span{
+  color:var(--text)!important;
   min-width:0!important;
   font-size:10px!important;
   line-height:1.2!important;
   overflow-wrap:anywhere!important;
+}
+.a2-os-inspection .check-item:has(input:checked) span{
+  color:var(--text)!important;
 }
 @media(max-width:350px){
   .a2-os-inspection .check-grid{gap:5px!important}
