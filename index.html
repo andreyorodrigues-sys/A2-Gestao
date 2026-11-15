@@ -802,6 +802,9 @@ function a2DateKey(value){
 }
 function a2DayKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function a2NormStatus(v){return String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+// Helper global: usado pela Área de Trabalho e pela rotina de relatórios.
+function dateOf(o){if(!o||typeof o!=='object')return null;const raw=o.completedAt||o.created||o.createdAt||o.date||o.openedAt;if(!raw)return null;if(raw instanceof Date)return Number.isNaN(raw.getTime())?null:raw;const s=String(raw).trim();let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const d=new Date(s);return Number.isNaN(d.getTime())?null:d;}
+
 function a2UpdateGreeting(){const h=document.getElementById('homeGreeting')||document.querySelector('#home h1');if(!h)return;const hr=new Date().getHours();h.textContent=(hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite')+', Andrei'}
 function a2UpdateHomeCounters(){
   const now=new Date(),period=localStorage.a2RevenuePeriod||'month';
@@ -1890,6 +1893,68 @@ window.a2V9Ready=true;
 
 
 
+
+<style id="a2-os-date-checklist-layout-fix">
+/* Ajuste solicitado: campo de data compacto e checklist em duas colunas no iPhone. */
+.a2-os-section .a2-budget-grid>.a2-os-date-field{
+  width:145px!important;
+  max-width:100%!important;
+  min-width:0!important;
+  justify-self:start!important;
+  grid-column:auto!important;
+}
+.a2-os-section .a2-os-date-field input[type="date"]{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:38px!important;
+  height:38px!important;
+  padding:5px 6px!important;
+  font-size:13px!important;
+  box-sizing:border-box!important;
+}
+.a2-os-inspection .check-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  flex-direction:initial!important;
+  gap:7px!important;
+  align-items:stretch!important;
+}
+.a2-os-inspection .check-item{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:42px!important;
+  gap:7px!important;
+  padding:8px 7px!important;
+  box-sizing:border-box!important;
+}
+.a2-os-inspection .check-item input[type="checkbox"]{
+  appearance:auto!important;
+  -webkit-appearance:checkbox!important;
+  accent-color:var(--orange)!important;
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  max-width:16px!important;
+  flex:0 0 16px!important;
+  margin:0!important;
+}
+.a2-os-inspection .check-item span{
+  min-width:0!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  overflow-wrap:anywhere!important;
+}
+@media(max-width:350px){
+  .a2-os-inspection .check-grid{gap:5px!important}
+  .a2-os-inspection .check-item{gap:5px!important;padding:7px 5px!important}
+  .a2-os-inspection .check-item span{font-size:9px!important}
+}
+</style>
 </body></html>`;
     popup.document.open();
     popup.document.write(html);
