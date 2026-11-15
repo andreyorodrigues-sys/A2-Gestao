@@ -2831,3 +2831,116 @@ body{background:#080a0d;color:var(--text)}
 </style>
 
 </body></html>
+
+
+<!-- A2 Budget Actions Release: isolated from test branch -->
+<script>
+(function(){
+  'use strict';
+  if(window.__a2BudgetActionsRelease)return;
+  window.__a2BudgetActionsRelease=true;
+
+  window.a2GenerateBudgetPDF=function(id){
+    const b=budgets.find(x=>String(x.id)===String(id));
+    if(!b){alert('Orçamento não encontrado.');return;}
+    if(typeof window.a2BuildSimplePDF!=='function'){alert('A geração de PDF não está disponível nesta versão.');return;}
+    const c=clients.find(x=>String(x.id)===String(b.clientId))||clients.find(x=>x.name===b.name)||{};
+    const v=vehicles.find(x=>String(x.id)===String(b.vehicleId))||{};
+    const rows=Array.isArray(b.services)&&b.services.length?b.services:(b.service?[{service:b.service,value:b.value}]:[]);
+    const subtotal=rows.reduce((sum,row)=>sum+Number(row.value||0),0);
+    const total=Number(b.totalValue??b.value??subtotal);
+    const clean=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,'');
+    const lines=[
+      'A2 ESTETICA AUTOMOTIVA',
+      'ORCAMENTO DE SERVICOS',
+      '',
+      'Cliente: '+(c.name||b.name||'Nao informado'),
+      'Telefone: '+(c.phone||'Nao informado'),
+      'Veiculo: '+(b.car||[v.brand,v.model].filter(Boolean).join(' ')||'Nao informado'),
+      'Placa: '+(v.plate||'Nao informada'),
+      'Data: '+(b.created||new Date().toLocaleDateString('pt-BR')),
+      'Status: '+(b.status||'Aberto'),
+      '',
+      'SERVICOS'
+    ];
+    rows.forEach(row=>lines.push('- '+(row.service||'Servico')+' : '+money(Number(row.value||0))));
+    lines.push('','TOTAL: '+money(total),'','A2 Estetica Automotiva','Atendimento mediante agendamento.','Nao e so estetica, e experiencia.');
+    const blob=window.a2BuildSimplePDF(lines.map(clean));
+    const url=URL.createObjectURL(blob);
+    const popup=window.open(url,'_blank');
+    if(!popup){
+      const a=document.createElement('a');a.href=url;a.download='Orcamento_A2_'+String(id).replace(/[^a-z0-9_-]/gi,'_')+'.pdf';document.body.appendChild(a);a.click();a.remove();
+    }
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  };
+
+  window.a2ShareBudgetWhatsApp=function(id){
+    window.a2GenerateBudgetPDF(id);
+    if(typeof window.quickBudgetWA==='function')window.quickBudgetWA(id);
+    else alert('PDF gerado. A opção de WhatsApp não está disponível nesta tela.');
+  };
+
+  window.a2DeleteBudget=function(id){
+    const b=budgets.find(x=>String(x.id)===String(id));
+    if(!b){alert('Orçamento não encontrado.');return;}
+    const linkedOrder=orders.some(o=>String(o.budgetId)===String(id)||String(o.id)===String(b.orderId));
+    const linkedReceivable=receivables.some(r=>String(r.budgetId)===String(id)||String(r.id)===String(b.receivableId));
+    const linkedAgenda=agenda.some(a=>String(a.budgetId)===String(id));
+    if(linkedOrder){alert('Este orçamento possui uma OS vinculada. Resolva o vínculo antes de excluir.');return;}
+    if(linkedReceivable){alert('Este orçamento possui uma conta a receber vinculada. Resolva o vínculo financeiro antes de excluir.');return;}
+    if(linkedAgenda){alert('Este orçamento possui um agendamento vinculado. Remova ou desvincule o agendamento antes de excluir.');return;}
+    if(!confirm('Excluir este orçamento definitivamente?\n\nO cadastro do cliente, veículo e serviços será preservado.'))return;
+    budgets=budgets.filter(x=>String(x.id)!==String(id));
+    try{
+      const saved=JSON.parse(localStorage.getItem('a2approvals')||'[]');
+      if(Array.isArray(saved))localStorage.setItem('a2approvals',JSON.stringify(saved.filter(x=>String(x.budgetId)!==String(id))));
+    }catch(e){console.warn('Não foi possível limpar a aprovação vinculada:',e);}
+    saveAll();
+    renderBudgets();
+    try{renderHome()}catch(e){}
+    try{showToast()}catch(e){}
+  };
+
+  const priorRender=window.renderBudgets;
+  if(priorRender){
+    window.renderBudgets=function(){
+      priorRender();
+      const host=document.getElementById('budgetList');
+      if(!host)return;
+      const list=budgets.slice().reverse();
+      [...host.children].forEach((card,index)=>{
+        const b=list[index];
+        if(!b)return;
+        const actions=card.querySelector('.a2-gerar-os')?.parentElement||card.lastElementChild;
+        if(!actions)return;
+        let pdf=actions.querySelector('[data-a2-budget-pdf]');
+        if(!pdf){
+          pdf=document.createElement('button');pdf.type='button';pdf.className='mini';pdf.textContent='PDF';
+          pdf.setAttribute('data-a2-budget-pdf','1');pdf.setAttribute('aria-label','Gerar PDF do orçamento');
+          pdf.addEventListener('click',()=>window.a2GenerateBudgetPDF(b.id));
+        }
+        const send=actions.querySelector('button[onclick*="quickBudgetWA"]');
+        if(send){send.textContent='Enviar';send.setAttribute('aria-label','Enviar orçamento pelo WhatsApp');send.onclick=null;send.addEventListener('click',()=>window.a2ShareBudgetWhatsApp(b.id));}
+        const approval=actions.querySelector('.a2-v9-approve');
+        const openOS=actions.querySelector('.a2-gerar-os');
+        const schedule=actions.querySelector('button[onclick*="a2AgendarSeguro"]');
+        const edit=[...actions.querySelectorAll('button')].find(el=>(el.getAttribute('onclick')||'').includes("openForm('orcamento'"));
+        let del=actions.querySelector('[data-a2-budget-delete]');
+        if(!del){
+          del=document.createElement('button');del.type='button';del.className='mini danger';del.textContent='Excluir';
+          del.setAttribute('data-a2-budget-delete','1');del.setAttribute('aria-label','Excluir orçamento');
+          del.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();window.a2DeleteBudget(b.id);});
+        }
+        const ordered=[pdf,send,approval,openOS,schedule,edit,del].filter(Boolean);
+        const known=new Set(ordered);
+        const extras=[...actions.querySelectorAll('button')].filter(el=>!known.has(el));
+        actions.append(...ordered,...extras);
+      });
+    };
+  }
+})();
+</script>
+<style id="a2-budget-actions-release">
+#budgetList .item>div:last-child{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+#budgetList [data-a2-budget-delete]{color:#ff9097;border-color:#743b42}
+</style>
