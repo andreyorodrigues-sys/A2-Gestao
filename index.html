@@ -1843,65 +1843,51 @@ window.a2V9Ready=true;
 <script id="a2-home-period-filter-fix">
 (function(){
   const previousRenderHome=window.renderHome;
-  const norm=v=>String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const dayKey=value=>{
-    if(!value)return '';
-    if(typeof a2DateKey==='function')return a2DateKey(value);
-    const s=String(value).trim();
-    let m=s.match(/^(\d{4}-\d{2}-\d{2})/);if(m)return m[1];
-    m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+'-'+m[2]+'-'+m[1]:'';
-  };
   function selectedRange(){
     const now=new Date(),p=localStorage.a2RevenuePeriod||'month';
-    let start,end;
-    if(p==='prevMonth'){start=new Date(now.getFullYear(),now.getMonth()-1,1);end=new Date(now.getFullYear(),now.getMonth(),0);}
-    else if(p==='30days'){end=new Date(now.getFullYear(),now.getMonth(),now.getDate());start=new Date(end.getTime()-29*86400000);}
-    else if(p==='year'){start=new Date(now.getFullYear(),0,1);end=new Date(now.getFullYear(),11,31);}
+    let ini,fim;
+    if(p==='prevMonth'){ini=new Date(now.getFullYear(),now.getMonth()-1,1);fim=new Date(now.getFullYear(),now.getMonth(),0);}
+    else if(p==='30days'){fim=new Date(now.getFullYear(),now.getMonth(),now.getDate());ini=new Date(fim.getTime()-29*86400000);}
+    else if(p==='year'){ini=new Date(now.getFullYear(),0,1);fim=new Date(now.getFullYear(),11,31);}
     else if(p==='custom'){
       const parse=v=>{const m=String(v||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;};
-      start=parse(localStorage.a2RevenueStart);end=parse(localStorage.a2RevenueEnd);
-      if(!start||!end){start=new Date(now.getFullYear(),now.getMonth(),1);end=new Date(now.getFullYear(),now.getMonth()+1,0);}
-    }else{start=new Date(now.getFullYear(),now.getMonth(),1);end=new Date(now.getFullYear(),now.getMonth()+1,0);}
-    const key=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    return {start:key(start),end:key(end)};
+      ini=parse(localStorage.a2RevenueStart);fim=parse(localStorage.a2RevenueEnd);
+      if(!ini||!fim){ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
+    }else{ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
+    const key=d=>a2DayKey(d);
+    return {start:key(ini),end:key(fim)};
   }
   function refreshPeriodIndicators(){
     const range=selectedRange();
-    const inside=value=>{const k=dayKey(value);return !!k&&k>=range.start&&k<=range.end;};
-    const status=o=>norm(o.status);
-    const periodBudgets=(budgets||[]).filter(b=>inside(b.created||b.createdAt||b.date));
-    const periodAgenda=(agenda||[]).filter(a=>inside(a.date||a.scheduledAt||a.createdAt));
-    const periodOrders=(orders||[]).filter(o=>inside(o.created||o.createdAt||o.openedAt));
-    const completedOrders=(orders||[]).filter(o=>['concluida','concluido','finalizado','finalizada'].includes(status(o))&&inside(o.completedAt||o.created||o.createdAt));
-    const activeOrders=periodOrders.filter(o=>!['concluida','concluido','finalizado','finalizada','pago'].includes(status(o)));
+    const inPeriod=value=>{const k=a2DateKey(value);return !!k&&k>=range.start&&k<=range.end;};
+    const status=x=>a2NormStatus(x.status);
+    const periodBudgets=budgets.filter(b=>inPeriod(b.created||b.createdAt||b.date));
+    const periodAgenda=agenda.filter(a=>inPeriod(a.date||a.scheduledAt||a.createdAt));
+    const periodOrders=orders.filter(o=>inPeriod(o.completedAt||o.createdAt||o.created));
+    const completed=periodOrders.filter(o=>['concluida','concluido','finalizado','finalizada'].includes(status(o)));
+    const active=periodOrders.filter(o=>!['concluida','concluido','finalizado','finalizada','pago'].includes(status(o)));
     const executing=periodOrders.filter(o=>status(o)==='em execucao');
     const waiting=periodOrders.filter(o=>status(o)==='aguardando pagamento');
-    const clientsSeen=new Set(),vehiclesSeen=new Set();
-    const add=(set,id,fallback)=>{const value=id!==undefined&&id!==null&&String(id).trim()?String(id):String(fallback||'').trim().toLocaleLowerCase('pt-BR');if(value)set.add(value);};
-    [...periodOrders,...periodBudgets,...periodAgenda].forEach(x=>{
-      add(clientsSeen,x.clientId,x.client||x.name);
-      add(vehiclesSeen,x.vehicleId,x.car||x.vehicle);
-    });
-    const fullyPaidReceivables=(receivables||[]).filter(r=>{
-      const paid=(payments||[]).filter(p=>String(p.receivableId)===String(r.id)).reduce((n,p)=>n+Number(p.amount||0),0);
-      return Number(r.amount||0)>0&&paid>=Number(r.amount||0)-0.009&&(payments||[]).some(p=>String(p.receivableId)===String(r.id)&&inside(p.date||p.createdAt));
-    });
-    const paidOrderIds=new Set(fullyPaidReceivables.map(r=>r.orderId||((budgets||[]).find(b=>String(b.id)===String(r.budgetId))||{}).orderId||'').filter(Boolean));
-    const paidByStatus=periodOrders.filter(o=>status(o)==='pago');
-    paidByStatus.forEach(o=>paidOrderIds.add(String(o.id)));
-    const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(value);};
-    setText('homeClients',clientsSeen.size);
-    setText('homeVehicles',vehiclesSeen.size);
-    setText('homeOS',activeOrders.length);
-    setText('pipeBudgets',periodBudgets.filter(b=>status(b)!=='recusado').length);
-    setText('pipeAgenda',periodAgenda.filter(a=>!['cancelado','concluido'].includes(status(a))).length);
-    setText('pipeOrders',executing.length);
-    setText('pipeDone',completedOrders.length);
-    setText('pipePending',waiting.length);
-    setText('pipePaid',paidOrderIds.size);
+    const paid=periodOrders.filter(o=>status(o)==='pago');
+    const clientIds=new Set(),vehicleIds=new Set();
+    const add=(set,id,name)=>{const v=id!=null&&String(id).trim()?String(id):String(name||'').trim().toLocaleLowerCase('pt-BR');if(v)set.add(v);};
+    periodOrders.forEach(o=>{add(clientIds,o.clientId,o.client);add(vehicleIds,o.vehicleId,o.car);});
+    periodBudgets.forEach(b=>{add(clientIds,b.clientId,b.name||b.client);add(vehicleIds,b.vehicleId,b.car);});
+    periodAgenda.forEach(a=>{add(clientIds,a.clientId,a.client);add(vehicleIds,a.vehicleId,a.car);});
+    const set=(id,n)=>{const el=document.getElementById(id);if(el)el.textContent=String(n);};
+    set('homeClients',clientIds.size);
+    set('homeVehicles',vehicleIds.size);
+    set('homeOS',active.length);
+    set('pipeBudgets',periodBudgets.filter(b=>!['recusado','aprovado'].includes(status(b))).length);
+    set('pipeAgenda',periodAgenda.filter(a=>!['cancelado','concluido'].includes(status(a))).length);
+    set('pipeOrders',executing.length);
+    set('pipeDone',completed.length);
+    set('pipePending',waiting.length);
+    set('pipePaid',paid.length);
     const labels=document.querySelectorAll('#home .a2-resumo-grid .stat .label');
     if(labels[0])labels[0].textContent='Clientes no período';
     if(labels[1])labels[1].textContent='Veículos no período';
+    if(labels[2])labels[2].textContent='OS abertas no período';
   }
   window.renderHome=function(){
     if(typeof previousRenderHome==='function')previousRenderHome();
