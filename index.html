@@ -817,36 +817,34 @@ function a2UpdateHomeCounters(){
   const start=a2DayKey(ini),end=a2DayKey(fim);
   const inPeriod=value=>{const key=a2DateKey(value);return !!key&&key>=start&&key<=end;};
   const norm=value=>String(value||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const periodOrders=orders.filter(o=>inPeriod(o.completedAt||o.created));
+  const periodOrders=orders.filter(o=>inPeriod(o.created||o.createdAt||o.openedAt));
+  const completedOrders=orders.filter(o=>['concluida','concluido','finalizado','finalizada'].includes(norm(o.status))&&inPeriod(o.completedAt||o.created||o.createdAt));
   const periodBudgets=budgets.filter(b=>inPeriod(b.created||b.createdAt||b.date));
   const periodAgenda=agenda.filter(a=>inPeriod(a.date||a.scheduledAt||a.createdAt));
-  const clientSet=new Set(),vehicleSet=new Set();
-  const addClient=(id,name)=>{
-    const match=clients.find(c=>norm(c.name)===norm(name));
-    const key=id||match?.id||norm(name);
-    if(key)clientSet.add(String(key));
-  };
-  const addVehicle=(id,label)=>{
-    const match=vehicles.find(v=>norm([v.brand,v.model,v.plate].filter(Boolean).join(' '))===norm(label)||norm(v.plate)===norm(label));
-    const key=id||match?.id||norm(label);
-    if(key)vehicleSet.add(String(key));
-  };
-  periodOrders.forEach(o=>{addClient(o.clientId,clientName(o.clientId));addVehicle(o.vehicleId,vehicleLabel(o.vehicleId));});
-  periodBudgets.forEach(b=>{addClient('',b.name||b.client);addVehicle('',b.car||b.vehicle);});
-  periodAgenda.forEach(a=>{addVehicle('',a.car||a.vehicle);});
+  const clientsSeen=new Set(),vehiclesSeen=new Set();
+  const add=(set,id,fallback)=>{const value=id!==undefined&&id!==null&&String(id).trim()?String(id):String(fallback||'').trim().toLocaleLowerCase('pt-BR');if(value)set.add(value);};
+  [...periodOrders,...periodBudgets,...periodAgenda].forEach(x=>{
+    add(clientsSeen,x.clientId,x.client||x.name);
+    add(vehiclesSeen,x.vehicleId,x.car||x.vehicle);
+  });
+  const paidReceivables=receivables.filter(r=>{
+    const paid=payments.filter(p=>String(p.receivableId)===String(r.id)).reduce((n,p)=>n+Number(p.amount||0),0);
+    return Number(r.amount||0)>0&&paid>=Number(r.amount||0)-0.009&&payments.some(p=>String(p.receivableId)===String(r.id)&&inPeriod(p.date||p.createdAt));
+  });
+  const paidOrderIds=new Set(paidReceivables.map(r=>String(r.orderId||((budgets.find(b=>String(b.id)===String(r.budgetId))||{}).orderId)||'')).filter(Boolean));
+  periodOrders.filter(o=>norm(o.status)==='pago').forEach(o=>paidOrderIds.add(String(o.id)));
   const statuses=periodOrders.map(o=>norm(o.status));
   const done=['concluida','concluido','finalizado','finalizada'];
-  const active=periodOrders.filter(o=>!done.includes(norm(o.status))&&!['pago','cancelado','cancelada'].includes(norm(o.status)));
   const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(value);};
-  set('homeClients',clientSet.size);
-  set('homeVehicles',vehicleSet.size);
-  set('homeOS',active.length);
-  set('pipeBudgets',periodBudgets.filter(b=>!['recusado','aprovado'].includes(norm(b.status))).length);
+  set('homeClients',clientsSeen.size);
+  set('homeVehicles',vehiclesSeen.size);
+  set('homeOS',periodOrders.filter(o=>!done.includes(norm(o.status))&&!['pago','cancelado','cancelada'].includes(norm(o.status))).length);
+  set('pipeBudgets',periodBudgets.filter(b=>norm(b.status)!=='recusado').length);
   set('pipeAgenda',periodAgenda.filter(a=>!['cancelado','concluido'].includes(norm(a.status))).length);
   set('pipeOrders',statuses.filter(x=>x==='em execucao').length);
-  set('pipeDone',statuses.filter(x=>done.includes(x)).length);
+  set('pipeDone',completedOrders.length);
   set('pipePending',statuses.filter(x=>x==='aguardando pagamento').length);
-  set('pipePaid',statuses.filter(x=>x==='pago').length);
+  set('pipePaid',paidOrderIds.size);
   const labels=document.querySelectorAll('#home .a2-resumo-grid .stat .label');
   if(labels[0])labels[0].textContent='Clientes no período';
   if(labels[1])labels[1].textContent='Veículos no período';
