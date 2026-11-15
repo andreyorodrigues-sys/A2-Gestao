@@ -810,13 +810,13 @@ function a2UpdateHomeCounters(){
   else if(period==='30days'){fim=new Date(now.getFullYear(),now.getMonth(),now.getDate());ini=new Date(fim.getTime()-29*86400000);}
   else if(period==='year'){ini=new Date(now.getFullYear(),0,1);fim=new Date(now.getFullYear(),11,31);}
   else if(period==='custom'){
-    const parse=v=>{const m=String(v||'').match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;};
+    const parse=v=>{const m=String(v||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;};
     ini=parse(localStorage.a2RevenueStart);fim=parse(localStorage.a2RevenueEnd);
     if(!ini||!fim){ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
   }else{ini=new Date(now.getFullYear(),now.getMonth(),1);fim=new Date(now.getFullYear(),now.getMonth()+1,0);}
   const start=a2DayKey(ini),end=a2DayKey(fim);
   const inPeriod=value=>{const key=a2DateKey(value);return !!key&&key>=start&&key<=end;};
-  const norm=value=>String(value||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+  const norm=value=>String(value||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const periodOrders=orders.filter(o=>inPeriod(o.completedAt||o.created));
   const periodBudgets=budgets.filter(b=>inPeriod(b.created||b.createdAt||b.date));
   const periodAgenda=agenda.filter(a=>inPeriod(a.date||a.scheduledAt||a.createdAt));
