@@ -546,19 +546,16 @@ function a2ReadRaw(key){
   return null;
 }
 function a2DataSnapshot(){const o={version:A2_STORAGE_VERSION,savedAt:new Date().toISOString()};for(const k of A2_KEYS)o[k]=a2ReadRaw(k)||[];o.settings=a2ReadSettings();return o}
-function a2ProtectBackup(snapshot){
-  // O backup interno é complementar: nunca deve impedir a gravação principal.
+function a2ProtectBackup(){
+  // A cópia integral em localStorage duplicava todos os registros e fotos.
+  // Isso consumia a cota do Safari/iPhone e provocava falhas na restauração.
+  // O backup confiável passa a ser o arquivo JSON exportado pelo usuário.
   try{
-    const snap=snapshot||a2DataSnapshot();
-    const has=A2_KEYS.some(k=>Array.isArray(snap[k])&&snap[k].length>0);
-    if(!has)return {ok:false,reason:'empty'};
-    const json=JSON.stringify(snap);
-    localStorage.setItem('a2backup',json);
-    const check=localStorage.getItem('a2backup');
-    if(check!==json)throw new Error('A conferência do backup interno falhou.');
-    return {ok:true,bytes:new Blob([json]).size};
+    if(localStorage.getItem('a2backup')!==null)localStorage.removeItem('a2backup');
+    window.a2LastBackupWarning='';
+    return {ok:true,bytes:0,disabled:true};
   }catch(e){
-    window.a2LastBackupWarning='Os dados principais foram tratados separadamente, mas o backup interno não pôde ser atualizado: '+(e?.message||'armazenamento indisponível');
+    window.a2LastBackupWarning='Não foi possível liberar a cópia interna redundante: '+(e?.message||'armazenamento indisponível');
     console.warn(window.a2LastBackupWarning);
     return {ok:false,reason:e?.message||'storage'};
   }
@@ -598,7 +595,7 @@ function saveAll(){
   // Só atualiza a cópia interna depois de confirmar a gravação principal.
   const backup=a2ProtectBackup({version:A2_STORAGE_VERSION,savedAt:new Date().toISOString(),...values,settings:a2ReadSettings()});
   window.a2LastSaveError='';
-  window.a2LastSaveStatus=backup.ok?'Dados salvos e backup interno atualizado.': 'Dados principais salvos; backup interno não atualizado. Exporte um backup manual assim que possível.';
+  window.a2LastSaveStatus=backup.ok?'Dados salvos. Backup completo deve ser exportado manualmente e guardado fora do iPhone.': 'Dados principais salvos; não foi possível liberar espaço de armazenamento. Exporte um backup manual assim que possível.';
   return {ok:true,backup:backup.ok};
 }
 function go(id,el){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));if(el)el.classList.add('active');refresh(id);window.scrollTo(0,0)}
