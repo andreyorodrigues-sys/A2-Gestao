@@ -571,7 +571,42 @@ const base=[{id:'base1',time:'08:00',car:'VW Golf GTI',service:'Higienização P
 const read=(k,f)=>{const v=a2ReadRaw(k);return v===null?f:v}; const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 a2ProtectBackup();
 let clients=read('a2clients',[]),vehicles=read('a2vehicles',[]),services=read('a2services',[]),budgets=read('a2budgets',[]),agenda=read('a2agenda',[])||[],orders=read('a2orders',[]),history=read('a2history',[]),receivables=read('a2receivables',[]),payments=read('a2payments',[]),transactions=read('a2transactions',[]),crmActivities=read('a2crmActivities',[]),maintenance=read('a2maintenance',[]),payables=read('a2payables',[]),recurring=read('a2recurring',[]),serviceCosts=read('a2serviceCosts',[]),accounts=read('a2accounts',[]),goals=read('a2goals',[]); if(!agenda.length)agenda=base; if(!services.length)services=[{id:uid(),name:'Higienização Detalhada',category:'Higienização',price:350,time:'1 dia',active:true},{id:uid(),name:'Polimento de Pintura',category:'Polimento',price:300,time:'1 dia',active:true},{id:uid(),name:'Proteção de Pintura',category:'Proteção',price:150,time:'2 horas',active:true}];
+function a2NormalizeInspectionPhotoStorage(){
+  let movedFromItems=0,duplicateRefs=0,changed=false;
+  const keyOf=photo=>{
+    if(typeof photo==='string')return photo;
+    if(photo&&typeof photo==='object')return photo.data||photo.url||photo.src||JSON.stringify(photo);
+    return String(photo??'');
+  };
+  const normalizeStage=stage=>{
+    if(!stage||typeof stage!=='object')return;
+    const general=Array.isArray(stage.photos)?stage.photos:[];
+    const items=Array.isArray(stage.items)?stage.items:[];
+    const all=[...general,...items.flatMap(item=>Array.isArray(item?.photos)?item.photos:[])];
+    const seen=new Set(),unique=[];
+    for(const photo of all){
+      const key=keyOf(photo);
+      if(!key||seen.has(key)){duplicateRefs++;changed=true;continue;}
+      seen.add(key);unique.push(photo);
+    }
+    const nested=items.reduce((n,item)=>n+(Array.isArray(item?.photos)?item.photos.length:0),0);
+    if(nested){movedFromItems+=nested;changed=true;}
+    if(general.length!==unique.length||nested)stage.photos=unique;
+    if(nested)stage.items=items.map(item=>item&&typeof item==='object'?{...item,photos:[]}:item);
+  };
+  orders.forEach(order=>{
+    if(!order||typeof order!=='object')return;
+    normalizeStage(order.inspectionStart);
+    normalizeStage(order.inspectionEnd);
+  });
+  const result={changed,movedFromItems,duplicateRefs};
+  if(changed)window.a2PhotoStorageMigration=result;
+  return result;
+}
 function saveAll(){
+  // Fotos ficam em um único local por etapa da vistoria. Isso remove cópias
+  // redundantes do checklist sem descartar nenhuma imagem única.
+  a2NormalizeInspectionPhotoStorage();
   const values={a2clients:clients,a2vehicles:vehicles,a2services:services,a2budgets:budgets,a2agenda:agenda,a2orders:orders,a2history:history,a2receivables:receivables,a2payments:payments,a2transactions:transactions,a2crmActivities:crmActivities,a2maintenance:maintenance,a2payables:payables,a2recurring:recurring,a2serviceCosts:serviceCosts,a2accounts:accounts,a2goals:goals};
   const previous={};
   for(const k of A2_KEYS){try{previous[k]=localStorage.getItem(k)}catch(e){throw new Error('Não foi possível ler os dados atuais antes de salvar: '+e.message)}}
@@ -590,6 +625,8 @@ function saveAll(){
     }
     const msg='Falha ao salvar os dados ('+(err?.message||'erro de armazenamento')+'). '+(rollbackOk?'Foi tentada a restauração dos valores anteriores.':'A restauração automática não pôde ser confirmada. NÃO feche o aplicativo; exporte um backup assim que possível.');
     window.a2LastSaveError=msg;
+    const toast=document.getElementById('toast');
+    if(toast){toast.textContent='FALHA AO SALVAR: '+(err?.message||'armazenamento indisponível')+'. Não feche o aplicativo; exporte um backup assim que possível.';toast.style.background='#7f1d1d';toast.style.display='block';}
     throw new Error(msg);
   }
   // Só atualiza a cópia interna depois de confirmar a gravação principal.
@@ -780,7 +817,23 @@ async function a2CheckIntegrity(){
     el.style.color='#b91c1c';
   }
 }
-async function a2CheckStorage(){const el=document.getElementById('a2StorageStatus');if(!el)return;try{if(navigator.storage&&navigator.storage.estimate){const x=await navigator.storage.estimate();const used=x.usage||0,quota=x.quota||0;el.textContent='Uso estimado: '+(used/1024/1024).toFixed(2)+' MB'+(quota?' de '+(quota/1024/1024).toFixed(2)+' MB ('+(used/quota*100).toFixed(1)+'%).':'')+' O valor é uma estimativa do navegador.';}else{el.textContent='Este navegador não disponibilizou a estimativa de armazenamento. Isso não significa que esteja vazio.'}}catch(e){el.textContent='Não foi possível consultar o armazenamento neste navegador.'}}
+async function a2CheckStorage(){
+  const el=document.getElementById('a2StorageStatus');if(!el)return;
+  try{
+    let localBytes=0,largestKey='',largestBytes=0;
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i),value=localStorage.getItem(key)||'';
+      const bytes=new Blob([key,value]).size;localBytes+=bytes;
+      if(bytes>largestBytes){largestBytes=bytes;largestKey=key}
+    }
+    let estimate='Estimativa de uso da origem indisponível.';
+    if(navigator.storage&&navigator.storage.estimate){
+      const x=await navigator.storage.estimate(),used=x.usage||0,quota=x.quota||0;
+      estimate='Uso estimado da origem: '+(used/1048576).toFixed(2)+' MB'+(quota?' de '+(quota/1048576).toFixed(2)+' MB ('+(used/quota*100).toFixed(1)+'%).':'')+' ';
+    }
+    el.textContent='Dados em localStorage: aproximadamente '+(localBytes/1048576).toFixed(2)+' MB. Maior grupo: '+largestKey+' ('+(largestBytes/1048576).toFixed(2)+' MB). '+estimate+'A estimativa do navegador não representa necessariamente o limite específico do localStorage.';
+  }catch(e){el.textContent='Não foi possível consultar o armazenamento neste navegador: '+(e?.message||'erro desconhecido')}
+}
 
 function refresh(id){if(id==='home')renderHome();if(id==='agenda')renderAgenda();if(id==='clientes'){renderClients();renderVehicles();renderServices()}if(id==='orcamentos')renderBudgets();if(id==='ordens')renderOrders();if(id==='whatsapp'){fillWaClients();fillWaTemplates();renderWhatsApp();renderTemplates()}if(id==='financeiro')renderFinance();if(id==='historico')renderHistory();if(id==='relatorios')renderReports();if(id==='seguranca')a2CheckStorage()}
 function job(x){return `<article class="job"><div class="row"><div><div class="time">${esc(x.time||'')}</div><div class="car">${esc(x.car||'')}</div><div class="service">${esc(x.service||'')}</div></div><span class="status">${esc(x.status||'')}</span></div></article>`}
@@ -889,11 +942,11 @@ function renderBudgets(){document.getElementById('budgetList').innerHTML=budgets
 const inspectionItems=['Pintura','Para-choques','Rodas e pneus','Vidros e retrovisores','Interior/painéis','Bancos e carpetes','Teto','Portas e borrachas','Motor/chassi','Avarias pré-existentes'];
 let pendingInspection={start:{photos:[]},end:{photos:[]}};
 function photoThumbs(arr){return (arr||[]).map(src=>`<img src="${src}" alt="Foto da inspeção">`).join('')}
-function resetPendingInspection(obj){pendingInspection={start:{photos:[...(obj?.inspectionStart?.photos||[])],items:(obj?.inspectionStart?.items||inspectionItems.map((_,i)=>({photos:[],note:''}))).map(x=>({photos:[...(x?.photos||[])],note:x?.note||''}))},end:{photos:[...(obj?.inspectionEnd?.photos||[])],items:(obj?.inspectionEnd?.items||inspectionItems.map((_,i)=>({photos:[],note:''}))).map(x=>({photos:[...(x?.photos||[])],note:x?.note||''}))}};if(!obj?.inspectionStart?.items&&obj?.inspectionStart?.photos?.length)pendingInspection.start.items[0].photos=[...obj.inspectionStart.photos];if(!obj?.inspectionEnd?.items&&obj?.inspectionEnd?.photos?.length)pendingInspection.end.items[0].photos=[...obj.inspectionEnd.photos]}
-async function compressPhoto(file){return new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{let max=1280,scale=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);let ctx=c.getContext('2d');ctx.drawImage(im,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.72))};im.onerror=reject;im.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+function resetPendingInspection(obj){pendingInspection={start:{photos:[...(obj?.inspectionStart?.photos||[])],items:(obj?.inspectionStart?.items||inspectionItems.map(()=>({photos:[],note:''}))).map(x=>({photos:[],note:x?.note||''}))},end:{photos:[...(obj?.inspectionEnd?.photos||[])],items:(obj?.inspectionEnd?.items||inspectionItems.map(()=>({photos:[],note:''}))).map(x=>({photos:[],note:x?.note||''}))}}}
+async function compressPhoto(file){return new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{let max=1280,scale=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);let ctx=c.getContext('2d');ctx.drawImage(im,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.60))};im.onerror=reject;im.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
 async function handleInspectionPhotos(stage,input){let files=[...(input.files||[])];if(!files.length)return;let photos=[];for(const f of files){try{photos.push(await compressPhoto(f))}catch(e){}}pendingInspection[stage].photos=[...(pendingInspection[stage].photos||[]),...photos];document.getElementById(stage+'PhotoCount').textContent=pendingInspection[stage].photos.length+' foto(s) registrada(s)';const pv=document.getElementById(stage+'PhotoPreview');if(pv)pv.innerHTML=photoThumbs(pendingInspection[stage].photos);input.value=''}
 async function handleInspectionItemPhoto(stage,index,input){let f=input.files?.[0];if(!f)return;try{let photo=await compressPhoto(f);pendingInspection[stage].items[index].photos.push(photo);pendingInspection[stage].photos.push(photo);document.getElementById(stage+'ItemPhotos'+index).innerHTML=photoThumbs(pendingInspection[stage].items[index].photos);document.getElementById(stage+'PhotoCount').textContent=pendingInspection[stage].photos.length+' foto(s) registrada(s)';}catch(e){alert('Não foi possível processar a foto.')}input.value=''}
-function collectInspectionItems(stage,oldItems){return inspectionItems.map((x,i)=>({photos:[...(pendingInspection[stage].items?.[i]?.photos||[])],note:document.getElementById(stage+'Note'+i)?.value||oldItems?.[i]?.note||''}))}
+function collectInspectionItems(stage,oldItems){return inspectionItems.map((x,i)=>({photos:[],note:document.getElementById(stage+'Note'+i)?.value||oldItems?.[i]?.note||''}))}
 function collectInspectionPhotos(stage){const p=pendingInspection?.[stage]||{};const general=Array.isArray(p.photos)?p.photos:[];const items=Array.isArray(p.items)?p.items:[];const itemPhotos=items.flatMap(x=>Array.isArray(x?.photos)?x.photos:[]);return [...new Set([...general,...itemPhotos])]}
 function showInspection(id){let o=orders.find(x=>x.id===id);if(!o)return;let v=vehicles.find(x=>x.id===o.vehicleId);let html=`<div class="inspection-modal" id="inspectionModal"><div class="detail"><button class="back" onclick="closeInspection()">← Voltar</button><div class="label">INSPEÇÃO FOTOGRÁFICA</div><div class="detail-title">${esc(vehicleLabel(o.vehicleId))}</div><p class="smallnote">OS ${esc(o.id.slice(-5).toUpperCase())} • ${esc(o.service)}</p><div class="inspection"><h3>📸 Entrada</h3><div class="smallnote">${o.inspectionStart?.checks?.length||0}/${inspectionItems.length} itens conferidos • ${o.inspectionStart?.photos?.length||0} foto(s)</div><div class="photo-preview">${photoThumbs(o.inspectionStart?.photos||[])||'<div class="empty">Nenhuma foto registrada.</div>'}</div></div><div class="inspection"><h3>📸 Finalização</h3><div class="smallnote">${o.inspectionEnd?.checks?.length||0}/${inspectionItems.length} itens conferidos • ${o.inspectionEnd?.photos?.length||0} foto(s)</div><div class="photo-preview">${photoThumbs(o.inspectionEnd?.photos||[])||'<div class="empty">Nenhuma foto registrada.</div>'}</div><button class="primary" onclick="closeInspection();openForm('os','${o.id}')">Editar checklist</button></div></div>`;document.body.insertAdjacentHTML('beforeend',html)}
 function closeInspection(){document.getElementById('inspectionModal')?.remove()}
@@ -929,7 +982,7 @@ function showClient(id){let c=clients.find(x=>x.id===id),vs=vehicles.filter(v=>v
 function showVehicle(id){let v=vehicles.find(x=>x.id===id),c=clients.find(x=>x.id===v.clientId);document.getElementById('detailContent').innerHTML=`<div class="detail"><div class="label">FICHA DO VEÍCULO</div><div class="detail-title">${esc(v.brand)} ${esc(v.model)}</div><div class="detail-grid"><div class="detail-box"><small>Proprietário</small><b>${esc(c?.name||'')}</b></div><div class="detail-box"><small>Placa</small><b>${esc(v.plate||'')}</b></div><div class="detail-box"><small>Ano</small><b>${esc(v.year||'—')}</b></div><div class="detail-box"><small>Cor</small><b>${esc(v.color||'—')}</b></div></div>${c?.phone?`<button class="primary" onclick="startClientWA('${c.id}')">💬 WhatsApp proprietário</button>`:''}<div class="section"><h2>Histórico</h2></div>${orders.filter(o=>o.vehicleId===id).map(o=>`<div class="linkcard"><h4>${esc(o.service)}</h4><p>${esc(o.status)} • ${money(o.value)}</p></div>`).join('')||'<div class="empty">Nenhum serviço registrado.</div>'}<button class="secondary" onclick="openForm('veiculo','${id}')">Editar veículo</button></div>`;go('detail')}
 function showService(id){let s=services.find(x=>x.id===id);document.getElementById('detailContent').innerHTML=`<div class="detail"><div class="label">FICHA DO SERVIÇO</div><div class="detail-title">${esc(s.name)}</div><div class="detail-grid"><div class="detail-box"><small>Categoria</small><b>${esc(s.category||'')}</b></div><div class="detail-box"><small>Valor</small><b class="money-sm">${money(s.price)}</b></div><div class="detail-box"><small>Tempo</small><b>${esc(s.time||'')}</b></div><div class="detail-box"><small>Status</small><b>${s.active?'Ativo':'Inativo'}</b></div></div><button class="secondary" onclick="openForm('servico','${id}')">Editar serviço</button></div>`;go('detail')}
 function startClientWA(id){document.getElementById('waClient').value=id;document.getElementById('waTemplate').value='realizado';go('whatsapp')}
-function showToast(){let t=document.getElementById('toast');t.style.display='block';setTimeout(()=>t.style.display='none',1600)}
+function showToast(){let t=document.getElementById('toast');if(!t)return;t.textContent=window.a2LastSaveError?'Falha ao salvar. Confira a área de Segurança.':'Salvo com sucesso';t.style.background=window.a2LastSaveError?'#7f1d1d':'';t.style.display='block';setTimeout(()=>t.style.display='none',2600)}
 renderHome();renderClients();renderVehicles();renderServices();renderFinance();
 
 // ===== A2 ORÇAMENTO MULTISSERVIÇOS =====
