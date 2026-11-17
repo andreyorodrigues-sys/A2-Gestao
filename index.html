@@ -3120,6 +3120,78 @@ body{background:#080a0d;color:var(--text)}
   .a2-os-inspection .check-item span{font-size:9px!important}
 }
 </style>
+
+<script id="a2-os-receive-payment-shortcut">
+(function(){
+  'use strict';
+  if(window.__a2OSReceivePaymentShortcut)return;
+  window.__a2OSReceivePaymentShortcut=true;
+
+  function linkedReceivable(order){
+    if(!order)return null;
+    const byOrder=receivables.find(r=>
+      (order.receivableId&&String(r.id)===String(order.receivableId)) ||
+      (r.orderId&&String(r.orderId)===String(order.id))
+    );
+    if(byOrder)return byOrder;
+    const budget=budgets.find(b=>
+      (order.budgetId&&String(b.id)===String(order.budgetId)) ||
+      (b.orderId&&String(b.orderId)===String(order.id))
+    );
+    return budget?receivables.find(r=>String(r.budgetId)===String(budget.id)):null;
+  }
+
+  function remaining(receivable){
+    const paid=payments
+      .filter(p=>String(p.receivableId)===String(receivable.id))
+      .reduce((sum,p)=>sum+(Number(p.amount)||0),0);
+    return Math.max(0,Math.round((Number(receivable.amount||0)-paid)*100)/100);
+  }
+
+  window.a2ReceiveOrderPayment=function(orderId){
+    const order=orders.find(o=>String(o.id)===String(orderId));
+    if(!order){alert('Ordem de Serviço não encontrada.');return;}
+    const receivable=linkedReceivable(order);
+    if(!receivable){
+      alert('Esta OS ainda não possui uma conta a receber vinculada. Confira se o orçamento correspondente foi aprovado.');
+      return;
+    }
+    if(remaining(receivable)<=0){
+      alert('Esta OS já está quitada.');
+      return;
+    }
+    go('financeiro');
+    if(typeof window.a2AddPayment==='function')window.a2AddPayment(receivable.id);
+    else alert('Não foi possível abrir o formulário de recebimento. Acesse Financeiro > Contas a receber.');
+  };
+
+  const previousRenderOrders=window.renderOrders;
+  if(typeof previousRenderOrders!=='function')return;
+  window.renderOrders=function(){
+    previousRenderOrders();
+    const host=document.getElementById('osList');
+    if(!host)return;
+    const ordered=orders.slice().reverse();
+    Array.from(host.children).forEach((card,index)=>{
+      const order=ordered[index];
+      if(!order)return;
+      card.querySelector('[data-a2-os-receive-payment]')?.remove();
+      const receivable=linkedReceivable(order);
+      if(!receivable||remaining(receivable)<=0)return;
+      const actions=card.querySelector('.item-actions');
+      if(!actions)return;
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='mini';
+      button.textContent='Receber';
+      button.setAttribute('data-a2-os-receive-payment','1');
+      button.setAttribute('aria-label','Registrar recebimento da OS '+String(order.id));
+      button.addEventListener('click',()=>window.a2ReceiveOrderPayment(order.id));
+      actions.appendChild(button);
+    });
+  };
+})();
+</script>
 </body></html>
 
 
