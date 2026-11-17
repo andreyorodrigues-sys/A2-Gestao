@@ -1913,7 +1913,7 @@ function addMovement(){
  if(acc().length){let n=Number(prompt('Conta:\n'+acc().map((a,i)=>(i+1)+'. '+a.name).join('\n')+'\n0. Não classificar','0'));if(n>0&&acc()[n-1])accountId=acc()[n-1].id;}
  tx().push({id:uid(),type,description:description.trim(),amount,date,method,category,accountId,source:'manual',createdAt:new Date().toISOString()});saveAll();window.renderFinance();
 }
-window.a2FinAddMovement=addMovement;window.a2FinSetMonth=function(v){if(/^\\d{4}-\\d{2}$/.test(v||'')){selectedMonth=v;window.renderFinance()}};
+window.a2FinAddMovement=addMovement;window.a2FinSetMonth=function(v){if(/^\d{4}-\d{2}$/.test(v||'')){selectedMonth=v;window.renderFinance()}};
 window.a2FinReconcile=function(id){let t=tx().find(x=>String(x.id)===String(id));if(!t)return;t.reconciled=true;t.reconciledAt=new Date().toISOString();saveAll();window.renderFinance()};
 window.a2FinDeleteImported=function(id){let t=tx().find(x=>String(x.id)===String(id));if(!t||t.source!=='bank-import'||!confirm('Excluir esta linha importada?'))return;transactions=transactions.filter(x=>String(x.id)!==String(id));saveAll();window.renderFinance()};
 window.a2FinImportCSV=function(input){
