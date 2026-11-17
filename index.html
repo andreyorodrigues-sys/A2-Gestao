@@ -496,6 +496,34 @@ body.a2-report-top .app{padding-top:0!important}
   #home .a2-resumo-grid .stat .label{font-size:9px!important;height:21px!important;min-height:21px!important}
 }
 </style>
+<style id="a2-consolidated-layout-audit">
+/* A2 — proteção de layout em telas estreitas: textos e ações não se sobrepõem. */
+.item{min-width:0;flex-wrap:wrap;align-items:flex-start}
+.item>div:first-child{min-width:0;flex:1 1 165px;overflow-wrap:anywhere}
+.item h3,.item p{min-width:0;overflow-wrap:anywhere;word-break:normal}
+.item-actions{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:5px;min-width:0;max-width:48%}
+.item-actions .mini{min-width:48px;min-height:34px;padding:7px 8px;white-space:normal;line-height:1.15}
+#serviceList .item{align-items:center}
+#serviceList .item-actions{max-width:46%}
+#serviceList .item-actions .mini{flex:1 1 48px}
+#budgetList .item{align-items:flex-start}
+#budgetList .item>div:first-child{flex:1 1 100%;width:100%}
+#budgetList .item>div:last-child{display:flex;flex:1 1 100%;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;width:100%}
+#budgetList .item>div:last-child>strong{flex:1 1 100%}
+#osList .item-actions{max-width:100%;width:100%;justify-content:flex-start}
+@media(max-width:380px){
+ .app{padding-left:12px;padding-right:12px}
+ .item{gap:8px;padding:12px}
+ .item-actions{max-width:100%;width:100%;justify-content:flex-start}
+ .item-actions .mini{flex:1 1 68px}
+ #serviceList .item-actions{max-width:100%;width:100%}
+ .tabs{gap:5px}
+ .tabs button{padding:9px 2px;font-size:10px;min-width:0}
+ .stats{gap:6px}
+ .stat{padding:9px}
+ .stat b{font-size:17px}
+}
+</style>
 </head><body><main class="app">
 <header class="top"><div class="brand">A2 <span>GESTÃO</span></div><div class="avatar">A</div></header>
 <section class="view active" id="home">
@@ -1236,7 +1264,9 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
     const q=(document.getElementById('serviceSearch')?.value||'').toLowerCase();
     const f=document.getElementById('serviceCategoryFilter');
     if(f){
+      const selected=f.value||'';
       f.innerHTML='<option value="">Todos os veículos</option>'+A2_VEHICLE_CATS.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      if([...f.options].some(option=>option.value===selected))f.value=selected;
     }
     const cat=f?.value||'';
     const list=services.filter(s=>{
@@ -1246,8 +1276,41 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
     });
     document.getElementById('serviceList').innerHTML=list.length?list.map(s=>{
       const p=svcPrices2(s);
-      return `<div class="item"><div onclick="showService('${s.id}')"><h3>${esc(s.name)}</h3><p>${esc((s.vehicleCategories||A2_VEHICLE_CATS).join(' • '))}<br>Hatch / Sedan: ${money(p['Hatch / Sedan'])} • SUV / Caminhonete: ${money(p['SUV / Caminhonete'])}</p></div><div class="item-actions"><button class="mini" onclick="showService('${s.id}')">Ver</button><button class="mini" onclick="openForm('servico','${s.id}')">Editar</button></div></div>`;
+      return `<div class="item"><div onclick="showService('${s.id}')"><h3>${esc(s.name)}</h3><p>${esc((s.vehicleCategories||A2_VEHICLE_CATS).join(' • '))}<br>Hatch / Sedan: ${money(p['Hatch / Sedan'])} • SUV / Caminhonete: ${money(p['SUV / Caminhonete'])}</p></div><div class="item-actions"><button class="mini" onclick="showService('${s.id}')">Ver</button><button class="mini" onclick="openForm('servico','${s.id}')">Editar</button><button class="mini danger" onclick="window.a2DeleteService('${s.id}')">Excluir</button></div></div>`;
     }).join(''):'<div class="empty">Nenhum serviço cadastrado para esta categoria.</div>';
+  };
+  window.a2DeleteService=function(id){
+    const service=services.find(x=>String(x.id)===String(id));
+    if(!service){alert('Serviço não encontrado.');return;}
+    const name=String(service.name||'').trim();
+    const hasService=(entry)=>{
+      if(!entry)return false;
+      if(String(entry.serviceId||'')===String(id))return true;
+      if(Array.isArray(entry.services)&&entry.services.some(x=>String(x?.serviceId||'')===String(id)||(name&&String(x?.service||'').trim()===name)))return true;
+      const labels=String(entry.service||'').split(/\\s*\\+\\s*/).map(x=>x.trim());
+      return !!name&&labels.includes(name);
+    };
+    const linkedBudgets=budgets.filter(hasService).length;
+    const linkedOrders=orders.filter(hasService).length;
+    const linkedAgenda=agenda.filter(hasService).length;
+    const links=linkedBudgets+linkedOrders+linkedAgenda;
+    if(links){
+      alert(`Este serviço está vinculado a ${linkedBudgets} orçamento(s), ${linkedOrders} OS e ${linkedAgenda} agendamento(s). Para preservar o histórico e os valores registrados, ele não pode ser excluído. Você pode editá-lo e alterar o status para Inativo.`);
+      openForm('servico',id);
+      return;
+    }
+    if(!confirm(`Excluir definitivamente o serviço “${name}”?\\n\\nEssa ação não exclui clientes, veículos ou outros registros.`))return;
+    const previous=services.slice();
+    services=services.filter(x=>String(x.id)!==String(id));
+    try{
+      saveAll();
+      renderServices();
+      showToast();
+    }catch(error){
+      services=previous;
+      renderServices();
+      alert('Não foi possível excluir o serviço porque os dados não foram salvos. Nenhum registro foi removido do armazenamento.\\n\\n'+(error?.message||error));
+    }
   };
 
   const previousOpenForm=window.openForm;
