@@ -4,6 +4,30 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { chromium } = require('playwright');
 
+const DATA_KEYS = [
+  'a2clients', 'a2vehicles', 'a2services', 'a2budgets', 'a2agenda',
+  'a2orders', 'a2history', 'a2receivables', 'a2payments', 'a2transactions',
+  'a2crmActivities', 'a2maintenance', 'a2payables', 'a2recurring',
+  'a2serviceCosts', 'a2accounts', 'a2goals', 'a2inventory',
+  'a2stockMoves', 'a2approvals'
+];
+const SETTING_KEYS = [
+  'a2templates', 'a2pix', 'a2RevenuePeriod', 'a2RevenueStart',
+  'a2RevenueEnd', 'a2RevenueHidden', 'a2GoogleReviewUrl'
+];
+
+async function withChromium(run) {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto('about:blank');
+    await page.addScriptTag({ path: path.resolve(__dirname, '..', 'storage', 'a2-idb.js') });
+    return await run(page);
+  } finally {
+    await browser.close();
+  }
+}
+
 test('legacy A2 app boots in a real browser without uncaught page errors', async () => {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
@@ -25,56 +49,93 @@ test('legacy A2 app boots in a real browser without uncaught page errors', async
   }
 });
 
-test('IndexedDB backend works in Chromium with A2-shaped data and atomic rollback', async () => {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-  try {
-    await page.goto('about:blank');
-    await page.addScriptTag({ path: path.resolve(__dirname, '..', 'storage', 'a2-idb.js') });
-    const result = await page.evaluate(async () => {
-      const keys = ['a2clients', 'a2orders', 'a2inventory'];
-      const settings = ['a2pix', 'a2RevenuePeriod'];
-      const legacy = new Map([
-        ['a2clients', JSON.stringify([{ id: 'c1', name: 'Teste' }])],
-        ['a2orders', JSON.stringify([{ id: 'os1', photos: [{ data: 'data:image/jpeg;base64,ABCD' }] }])],
-        ['a2inventory', JSON.stringify([{ id: 'p1', quantity: 2 }])],
-        ['a2pix', 'chave-teste'],
-        ['a2RevenuePeriod', 'month']
-      ]);
-      const storage = {
-        getItem: key => legacy.has(key) ? legacy.get(key) : null,
-        setItem: (key, value) => legacy.set(key, String(value)),
-        removeItem: key => legacy.delete(key)
-      };
-      const before = [...legacy.entries()];
-      const migrated = await window.A2IndexedDB.migrateFromLocalStorage(storage, keys, settings);
-      const copied = await window.A2IndexedDB.getMany([...keys, ...settings]);
-      let rejected = false;
-      try {
-        await window.A2IndexedDB.replaceAllAtomic(
-          { a2clients: [{ id: 'bad' }], cloneFailure: [() => 'not cloneable'] },
-          { a2pix: 'alterada' }
-        );
-      } catch (_) { rejected = true; }
-      const afterFailure = await window.A2IndexedDB.getMany(['a2clients', 'a2pix']);
-      return {
-        migrated,
-        photo: copied.a2orders[0].photos[0].data,
-        settings: [copied.a2pix, copied.a2RevenuePeriod],
-        legacyUnchanged: JSON.stringify([...legacy.entries()]) === JSON.stringify(before),
-        rejected,
-        previousClientPreserved: afterFailure.a2clients[0].id === 'c1',
-        previousSettingPreserved: afterFailure.a2pix === 'chave-teste'
-      };
+test('IndexedDB migration preserves all 20 A2 data groups, settings, photos and legacy source', async () => {
+  const result = await withChromium(page => page.evaluate(async ({ dataKeys, settingKeys }) => {
+    const legacy = new Map();
+    dataKeys.forEach((key, index) => {
+      const record = { id: key + '-record', marker: index };
+      if (key === 'a2orders') record.photos = [{ data: 'data:image/jpeg;base64,PHOTO-KEEP' }];
+      legacy.set(key, JSON.stringify([record]));
     });
-    assert.equal(result.migrated.verified, true);
-    assert.equal(result.photo, 'data:image/jpeg;base64,ABCD');
-    assert.deepEqual(result.settings, ['chave-teste', 'month']);
-    assert.equal(result.legacyUnchanged, true);
-    assert.equal(result.rejected, true);
-    assert.equal(result.previousClientPreserved, true);
-    assert.equal(result.previousSettingPreserved, true);
-  } finally {
-    await browser.close();
-  }
+    settingKeys.forEach((key, index) => legacy.set(key, 'setting-' + index));
+    const before = [...legacy.entries()];
+    const storage = {
+      getItem: key => legacy.has(key) ? legacy.get(key) : null,
+      setItem: (key, value) => legacy.set(key, String(value)),
+      removeItem: key => legacy.delete(key)
+    };
+
+    const migrated = await window.A2IndexedDB.migrateFromLocalStorage(storage, dataKeys, settingKeys);
+    const copied = await window.A2IndexedDB.getMany([...dataKeys, ...settingKeys]);
+    return {
+      migrated,
+      allGroupsPresent: dataKeys.every((key, index) => copied[key][0]?.marker === index),
+      allSettingsPresent: settingKeys.every((key, index) => copied[key] === 'setting-' + index),
+      photo: copied.a2orders[0].photos[0].data,
+      legacyUnchanged: JSON.stringify([...legacy.entries()]) === JSON.stringify(before)
+    };
+  }, { dataKeys: DATA_KEYS, settingKeys: SETTING_KEYS }));
+
+  assert.equal(result.migrated.verified, true);
+  assert.equal(result.migrated.categories, 20);
+  assert.equal(result.migrated.settings, 7);
+  assert.equal(result.migrated.records, 20);
+  assert.equal(result.allGroupsPresent, true);
+  assert.equal(result.allSettingsPresent, true);
+  assert.equal(result.photo, 'data:image/jpeg;base64,PHOTO-KEEP');
+  assert.equal(result.legacyUnchanged, true);
+});
+
+test('IndexedDB migration refuses malformed legacy data without partially replacing the database', async () => {
+  const result = await withChromium(page => page.evaluate(async () => {
+    await window.A2IndexedDB.replaceAllAtomic({ a2clients: [{ id: 'existing' }] }, { a2pix: 'keep-me' });
+    const legacy = new Map([
+      ['a2clients', JSON.stringify([{ id: 'new' }])],
+      ['a2vehicles', '{not-valid-json']
+    ]);
+    const storage = { getItem: key => legacy.has(key) ? legacy.get(key) : null };
+    let rejected = false;
+    let message = '';
+    try {
+      await window.A2IndexedDB.migrateFromLocalStorage(storage, ['a2clients', 'a2vehicles'], ['a2pix']);
+    } catch (error) {
+      rejected = true;
+      message = error.message;
+    }
+    const after = await window.A2IndexedDB.getMany(['a2clients', 'a2pix']);
+    return { rejected, message, clientId: after.a2clients[0].id, pix: after.a2pix };
+  }));
+
+  assert.equal(result.rejected, true);
+  assert.match(result.message, /Dado antigo inválido/);
+  assert.equal(result.clientId, 'existing');
+  assert.equal(result.pix, 'keep-me');
+});
+
+test('IndexedDB atomic replacement rolls back all writes when structured cloning fails', async () => {
+  const result = await withChromium(page => page.evaluate(async () => {
+    await window.A2IndexedDB.replaceAllAtomic(
+      { a2clients: [{ id: 'before' }] },
+      { a2pix: 'before-setting' }
+    );
+    let rejected = false;
+    try {
+      await window.A2IndexedDB.replaceAllAtomic(
+        { a2clients: [{ id: 'after' }], cloneFailure: [() => 'not cloneable'] },
+        { a2pix: 'after-setting' }
+      );
+    } catch (_) {
+      rejected = true;
+    }
+    const after = await window.A2IndexedDB.getMany(['a2clients', 'a2pix']);
+    return {
+      rejected,
+      clientId: after.a2clients[0].id,
+      pix: after.a2pix
+    };
+  }));
+
+  assert.equal(result.rejected, true);
+  assert.equal(result.clientId, 'before');
+  assert.equal(result.pix, 'before-setting');
 });
