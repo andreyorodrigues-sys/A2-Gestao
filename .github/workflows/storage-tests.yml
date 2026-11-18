@@ -5,13 +5,11 @@ on:
     paths:
       - 'storage/**'
       - 'tests/**'
-      - 'package.json'
       - '.github/workflows/storage-tests.yml'
   pull_request:
     paths:
       - 'storage/**'
       - 'tests/**'
-      - 'package.json'
       - '.github/workflows/storage-tests.yml'
 jobs:
   storage:
@@ -21,5 +19,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --ignore-scripts
-      - run: npm run test:storage
+      - run: npm install --prefix tests --ignore-scripts
+      - run: node --test tests/storage.test.cjs
