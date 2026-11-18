@@ -39,3 +39,29 @@ A camada nova deverá oferecer:
 - A conversão de fotos Base64 em blobs pode exigir espaço temporário adicional durante a migração.
 - A restauração não pode depender de rollback gravado no mesmo armazenamento que acabou de falhar.
 - O backup JSON externo do usuário continua sendo a proteção independente mais importante.
+
+## Auditoria adicional dos pontos de acesso (18/11/2026)
+
+A revisão estática do `index.html` encontrou 44 chamadas explícitas a métodos de `localStorage` (incluindo leituras, gravações, remoções e enumeração). Os principais pontos que precisam ser migrados juntos são:
+
+| Área | Comportamento atual | Risco se migrar só parte |
+|---|---|---|
+| Bootstrap / leitura | `a2ReadRaw()` e `read()` fazem leitura síncrona antes da inicialização das coleções globais | A interface pode iniciar vazia ou com dados antigos |
+| Salvamento principal | `saveAll()` persiste 17 coleções e tenta rollback no próprio localStorage | A gravação pode falhar e o rollback pode falhar pela mesma quota |
+| Extensão V9 | `readArr()`, `put()` e `saveExtra()` persistem estoque, movimentações e aprovações separadamente | Pode haver OS/orçamento salvo sem estoque/aprovação, ou o inverso |
+| Backup/restauração base | A implementação anterior serializa e grava as categorias e configurações diretamente | Não é compatível com uma camada assíncrona parcial |
+| Backup/restauração V9 | Sobrescreve o importador e faz outra sequência de gravações e rollback | Dois fluxos podem divergir e deixar estado parcial |
+| CRM | Link de avaliação do Google é lido e gravado diretamente | Configuração pode não acompanhar a migração |
+| Exclusão de orçamento | Remove aprovação vinculada diretamente do armazenamento | Pode deixar aprovação órfã ou apagar a referência errada se o cache não estiver sincronizado |
+| Verificação de OS | Lê `a2orders` diretamente para comparar o registro persistido com a edição | Pode comparar IndexedDB com cache/localStorage desatualizado |
+| Diagnóstico de espaço | Enumera `localStorage.length`, `key()` e valores | A tela de diagnóstico precisa distinguir o armazenamento antigo do novo |
+
+### Implicação para a arquitetura
+
+Não basta migrar apenas `saveAll()`. A camada precisa centralizar todos os acessos de leitura e gravação, inclusive os módulos V9 e os acessos diretos posteriores no HTML. O código usa variáveis globais mutáveis; portanto, a camada de persistência deve sincronizar o estado em memória com as transações do IndexedDB e expor um estado de inicialização/erro claro.
+
+### Bloqueio de implementação segura identificado
+
+O primeiro bloco de script está no `head` e inicializa as coleções globais com leituras síncronas antes da renderização do corpo. Os scripts seguintes dependem dessas variáveis globais e há handlers inline no HTML. Uma migração real exige alterar o bootstrap e a ordem de execução dos scripts, não apenas adicionar uma função `indexedDB.open()`.
+
+**Não foi alterado o código de produção nem o arquivo funcional da aplicação nesta etapa.** Este documento é a especificação de implementação e validação, não uma migração já concluída.
