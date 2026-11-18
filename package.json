@@ -1,0 +1,22 @@
+{
+  "name": "a2-gestao-ios",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A2 Gestão — aplicativo iOS com armazenamento local SQLite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "cap:sync": "cap sync ios",
+    "cap:open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "8.1.1",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/ios": "8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "vite": "8.3.8"
+  }
+}
