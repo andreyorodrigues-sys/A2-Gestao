@@ -96,9 +96,17 @@
       const done = txDone(tx);
       const store = tx.objectStore(STORE);
       const meta = tx.objectStore(META);
-      for (const [key, value] of Object.entries(values || {})) store.put(value, key);
-      for (const [key, value] of Object.entries(settings || {})) store.put(value, key);
-      meta.put({ completedAt: new Date().toISOString(), keys: Object.keys(values || {}).length, settings: Object.keys(settings || {}).length }, 'lastAtomicReplace');
+      try {
+        // Structured-clone failures can be thrown synchronously by put().
+        // Abort the whole transaction so earlier queued writes cannot commit alone.
+        for (const [key, value] of Object.entries(values || {})) store.put(value, key);
+        for (const [key, value] of Object.entries(settings || {})) store.put(value, key);
+        meta.put({ completedAt: new Date().toISOString(), keys: Object.keys(values || {}).length, settings: Object.keys(settings || {}).length }, 'lastAtomicReplace');
+      } catch (error) {
+        try { tx.abort(); } catch (_) {}
+        try { await done; } catch (_) {}
+        throw error;
+      }
       await done;
     } finally { db.close(); }
   }
