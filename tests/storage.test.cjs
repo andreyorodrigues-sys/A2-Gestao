@@ -54,3 +54,32 @@ test('atomic replacement exposes all new values after commit', async () => {
 test('missing keys return null rather than throwing', async () => {
   assert.equal(await db.get('not-present'), null);
 });
+
+const A2_KEYS = ['a2clients','a2vehicles','a2services','a2budgets','a2agenda','a2orders','a2history','a2receivables','a2payments','a2transactions','a2crmActivities','a2maintenance','a2payables','a2recurring','a2serviceCosts','a2accounts','a2goals','a2inventory','a2stockMoves','a2approvals'];
+const A2_SETTING_KEYS = ['a2templates','a2pix','a2RevenuePeriod','a2RevenueStart','a2RevenueEnd','a2RevenueHidden','a2GoogleReviewUrl'];
+
+test('full A2 V9 fixture migrates 20 categories, 7 settings and inspection photos', async () => {
+  const seed = {};
+  for (const key of A2_KEYS) seed[key] = JSON.stringify([]);
+  for (const key of A2_SETTING_KEYS) seed[key] = 'setting:' + key;
+  seed.a2clients = JSON.stringify([{ id: 'client-1', name: 'Cliente teste' }]);
+  seed.a2orders = JSON.stringify([{ id: 'os-1', inspectionStart: { photos: [{ data: 'data:image/jpeg;base64,PHOTO_A2' }] } }]);
+  seed.a2inventory = JSON.stringify([{ id: 'stock-1', quantity: 3 }]);
+  const source = memoryStorage(seed);
+  const before = source.snapshot();
+  const result = await db.migrateFromLocalStorage(source, A2_KEYS, A2_SETTING_KEYS);
+  assert.deepEqual(result, { categories: 20, settings: 7, records: 3, verified: true });
+  assert.deepEqual(source.snapshot(), before, 'all original localStorage entries must remain untouched');
+  const restored = await db.getMany([...A2_KEYS, ...A2_SETTING_KEYS]);
+  assert.equal(restored.a2orders[0].inspectionStart.photos[0].data, 'data:image/jpeg;base64,PHOTO_A2');
+  assert.equal(restored.a2inventory[0].quantity, 3);
+  for (const key of A2_SETTING_KEYS) assert.equal(restored[key], 'setting:' + key);
+});
+
+test('failed atomic replacement leaves the previous IndexedDB state intact', async () => {
+  await db.replaceAllAtomic({ keep: [{ id: 'old' }] }, { pref: 'old-setting' });
+  await assert.rejects(
+    () => db.replaceAllAtomic({ keep: [{ id: 'new' }], invalid: [() => 'not cloneable'] }, { pref: 'new-setting' })
+  );
+  assert.deepEqual(await db.getMany(['keep', 'pref']), { keep: [{ id: 'old' }], pref: 'old-setting' });
+});
