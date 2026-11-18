@@ -1,15 +1,17 @@
-name: A2 storage tests
+name: A2 storage and browser tests
 on:
   push:
     branches: [dev/a2-gestao-consolidada]
     paths:
       - 'storage/**'
       - 'tests/**'
+      - 'index.html'
       - '.github/workflows/storage-tests.yml'
   pull_request:
     paths:
       - 'storage/**'
       - 'tests/**'
+      - 'index.html'
       - '.github/workflows/storage-tests.yml'
 jobs:
   storage:
@@ -20,4 +22,5 @@ jobs:
         with:
           node-version: 22
       - run: npm install --prefix tests --ignore-scripts
-      - run: node --test tests/storage.test.cjs
+      - run: npx --prefix tests playwright install --with-deps chromium
+      - run: node --test tests/storage.test.cjs tests/browser-smoke.test.cjs
