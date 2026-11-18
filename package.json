@@ -1,0 +1,6 @@
+{
+  "name": "a2-gestao-storage-validation",
+  "private": true,
+  "scripts": { "test:storage": "node --test tests/storage.test.cjs" },
+  "devDependencies": { "fake-indexeddb": "^6.2.4" }
+}
