@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite } from '@capacitor-community/sqlite';
 import { A2_DATA_KEYS, A2_SETTING_KEYS, validateA2Backup } from './a2-backup-format.js';
+import { externalizeA2OrderPhotos, hydrateA2OrderPhotos } from './a2-photo-store.js';
 
 const DATABASE = 'a2_gestao';
 const DATABASE_VERSION = 1;
@@ -184,7 +185,9 @@ async function readSnapshotUnlocked() {
 
 export async function readA2NativeSnapshot() {
   await initializeA2NativeStore();
-  return readSnapshotUnlocked();
+  const stored = await readSnapshotUnlocked();
+  const hydrated = await hydrateA2OrderPhotos(stored);
+  return hydrated.snapshot;
 }
 
 /**
@@ -195,13 +198,15 @@ export async function readA2NativeSnapshot() {
 export async function importLegacyA2Backup(backupObject) {
   const snapshot = validateA2Backup(backupObject);
   const sourceChecksum = backupObject?.manifest?.checksum || null;
-  const result = await replaceSnapshot(snapshot, {
+  const photoResult = await externalizeA2OrderPhotos(snapshot);
+  const result = await replaceSnapshot(photoResult.snapshot, {
     key: 'legacy-json-v2-v3',
     sourceChecksum
   });
   return {
     ...result,
     photoReferences: snapshot.photoReferences,
+    photoFilesWritten: photoResult.filesWritten,
     integrityChecked: snapshot.integrityChecked
   };
 }
@@ -214,11 +219,16 @@ export async function saveA2NativeSnapshot(snapshot) {
     data: snapshot.data,
     settings: snapshot.settings
   });
-  return replaceSnapshot(validated);
+  const photoResult = await externalizeA2OrderPhotos(validated);
+  return {
+    ...(await replaceSnapshot(photoResult.snapshot)),
+    photoFilesWritten: photoResult.filesWritten
+  };
 }
 
 export async function verifyA2NativeStore() {
-  const snapshot = await readA2NativeSnapshot();
+  await initializeA2NativeStore();
+  const snapshot = await readSnapshotUnlocked();
   const counts = {};
   let totalRecords = 0;
   for (const category of A2_DATA_KEYS) {
