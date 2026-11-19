@@ -33,7 +33,7 @@ Não é seguro simplesmente adicionar Capacitor e gerar um ícone. A camada de p
 - [x] Criar validador puro de backups V2/V3 e testes automatizados do formato legado.
 - [ ] Ligar o bootstrap e os módulos da interface ao repositório SQLite; remover as leituras/gravações diretas de localStorage.
 - [ ] Adaptar a exportação/restauração para operar diretamente no SQLite e testar arquivos reais V2/V3.
-- [ ] Separar fotos em arquivos no diretório privado do app e migrar Data URLs sem perda; nesta etapa inicial as fotos ainda permanecem dentro do JSON dos registros no SQLite.
+- [x] Implementar separação das fotos para arquivos privados e hidratação para compatibilidade com a interface atual. Ainda falta conectar a migração ao bootstrap e executar testes com o backup real do usuário no iPhone.
 - [ ] Testar os fluxos funcionais completos em simulador e iPhone físico.
 - [ ] Configurar assinatura Apple e gerar build instalável para distribuição privada/TestFlight.
 - [ ] Só após aceite explícito, planejar eventual substituição da versão web.
@@ -42,8 +42,8 @@ Não é seguro simplesmente adicionar Capacitor e gerar um ícone. A camada de p
 
 - Dependências iniciais fixadas: Capacitor 8.6.2 e `@capacitor-community/sqlite` 8.1.1.
 - Módulos criados: `src/storage/a2-backup-format.js` e `src/storage/a2-sqlite-store.js`.
-- Testes criados: `tests/a2-backup-format.test.js` (V2, V3, checksum alterado, categoria ausente e registro inválido).
-- O módulo SQLite ainda não foi ligado ao app principal. Não declarar a persistência nativa como ativa até que o bootstrap e os 60 pontos de gravação/leitura do legado tenham sido migrados e testados.
+- Testes criados: `tests/a2-backup-format.test.js` (V2, V3, checksum alterado, categoria ausente e registro inválido) e `tests/a2-photo-store.test.js` (Data URL, referências privadas, ida/volta, arquivo ausente e hash).
+- Os módulos SQLite e de fotos já se chamam mutuamente para importar backup, externalizar imagens e hidratar a leitura. Eles ainda não foram ligados ao app principal. Não declarar a persistência nativa como ativa até que o bootstrap e os 60 pontos de gravação/leitura do legado tenham sido migrados e testados.
 - Os testes foram adicionados ao repositório, mas ainda aguardam execução em CI; o ambiente desta sessão não tem acesso de rede para instalar as dependências do projeto.
 
 ## Bloqueios e limites conhecidos
