@@ -12,6 +12,26 @@ const DB_VERSION = 1;
 const RECORDS = 'records';
 const SETTINGS = 'settings';
 const META = 'meta';
+const LEGACY_ALIASES = {
+  a2clients: ['clients','clientes','a2Clientes'],
+  a2vehicles: ['vehicles','veiculos','a2Veiculos'],
+  a2services: ['services','servicos','a2Servicos'],
+  a2budgets: ['budgets','orcamentos','a2Orcamentos'],
+  a2agenda: ['agenda','a2Agenda'],
+  a2orders: ['orders','ordens','os','a2Orders'],
+  a2history: ['history','historico','a2Historico'],
+  a2receivables: ['receivables','contasReceber'],
+  a2payments: ['payments','recebimentos'],
+  a2transactions: ['transactions','lancamentosFinanceiros'],
+  a2crmActivities: ['crmActivities','a2Relacionamento'],
+  a2maintenance: ['maintenance','a2Manutencoes'],
+  a2payables: ['payables','contasPagar'],
+  a2recurring: ['recurring','despesasRecorrentes'],
+  a2serviceCosts: ['serviceCosts','custosServicos'],
+  a2accounts: ['accounts','contasFinanceiras'],
+  a2goals: ['goals','metasFinanceiras']
+};
+
 
 const requestResult = request => new Promise((resolve, reject) => {
   request.onsuccess = () => resolve(request.result);
@@ -208,7 +228,13 @@ export async function migrateA2LocalStorage({ dataKeys, settingKeys, storage = g
   const data = {};
   let foundLegacyData = false;
   for (const key of dataKeys) {
-    const raw = storage?.getItem(key);
+    let raw = storage?.getItem(key);
+    if (raw === null || raw === undefined) {
+      for (const alias of (LEGACY_ALIASES[key] || [])) {
+        raw = storage?.getItem(alias);
+        if (raw !== null && raw !== undefined) break;
+      }
+    }
     if (raw === null || raw === undefined) {
       data[key] = [];
       continue;
