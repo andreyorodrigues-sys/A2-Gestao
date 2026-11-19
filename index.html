@@ -531,6 +531,8 @@ await (async function a2BrowserStorageBootstrap(){
     }
   }
 
+  let shouldCleanLegacyStorage = false;
+  let legacyKeysToClean = [];
   try {
     const storageModule = await import('./src/storage/a2-browser-idb.js');
     const migration = await storageModule.migrateA2LocalStorage({
@@ -553,8 +555,8 @@ await (async function a2BrowserStorageBootstrap(){
       if (!Array.isArray(snapshot.data[key])) throw new Error('Não foi possível validar a categoria ' + key + '.');
     }
 
-    const shouldCleanLegacyStorage = migration.migrated;
-    const legacyKeysToClean = [
+    shouldCleanLegacyStorage = migration.migrated;
+    legacyKeysToClean = [
       ...DATA_KEYS, ...SETTING_KEYS,
       'clients','clientes','a2Clientes','vehicles','veiculos','a2Veiculos',
       'services','servicos','a2Servicos','budgets','orcamentos','a2Orcamentos',
@@ -726,7 +728,7 @@ await (async function a2BrowserStorageBootstrap(){
 
   try {
     await runLegacyScripts();
-    if (window.a2BrowserStorageReady && typeof shouldCleanLegacyStorage !== 'undefined' && shouldCleanLegacyStorage) {
+    if (window.a2BrowserStorageReady && shouldCleanLegacyStorage) {
       for (const key of legacyKeysToClean) {
         try { nativeStorage.removeItem(key); } catch (_) {}
       }
