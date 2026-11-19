@@ -31,9 +31,11 @@ Não é seguro simplesmente adicionar Capacitor e gerar um ícone. A camada de p
 - [x] Criar base inicial de projeto Capacitor/Vite e configuração iOS sem tocar na produção.
 - [x] Criar módulo inicial de SQLite com tabelas de registros, configurações, migrações e metadados; gravação integral em transação e conferência de contagens.
 - [x] Criar validador puro de backups V2/V3 e testes automatizados do formato legado.
-- [ ] Ligar o bootstrap e os módulos da interface ao repositório SQLite; remover as leituras/gravações diretas de localStorage.
+- [ ] Ligar o bootstrap e os módulos da interface ao repositório SQLite; remover as leituras/gravações diretas de localStorage. A ponte síncrona de compatibilidade foi criada, mas ainda não está conectada às telas.
 - [ ] Adaptar a exportação/restauração para operar diretamente no SQLite e testar arquivos reais V2/V3.
 - [x] Implementar separação das fotos para arquivos privados e hidratação para compatibilidade com a interface atual. Ainda falta conectar a migração ao bootstrap e executar testes com o backup real do usuário no iPhone.
+- [x] Gerar projeto iOS em runner macOS e validar o projeto Xcode com `xcodebuild -list` (CI concluído com sucesso no commit `3db49d0`).
+- [x] Criar ponte Storage síncrona com `flush()` assíncrono e testes para persistência confirmada, alterações durante gravação e falha de SQLite. A integração com `saveAll()` ainda está pendente.
 - [ ] Testar os fluxos funcionais completos em simulador e iPhone físico.
 - [ ] Configurar assinatura Apple e gerar build instalável para distribuição privada/TestFlight.
 - [ ] Só após aceite explícito, planejar eventual substituição da versão web.
@@ -44,10 +46,10 @@ Não é seguro simplesmente adicionar Capacitor e gerar um ícone. A camada de p
 - Módulos criados: `src/storage/a2-backup-format.js` e `src/storage/a2-sqlite-store.js`.
 - Testes criados: `tests/a2-backup-format.test.js` (V2, V3, checksum alterado, categoria ausente e registro inválido) e `tests/a2-photo-store.test.js` (Data URL, referências privadas, ida/volta, arquivo ausente e hash).
 - Os módulos SQLite e de fotos já se chamam mutuamente para importar backup, externalizar imagens e hidratar a leitura. Eles ainda não foram ligados ao app principal. Não declarar a persistência nativa como ativa até que o bootstrap e os 60 pontos de gravação/leitura do legado tenham sido migrados e testados.
-- Os testes foram adicionados ao repositório, mas ainda aguardam execução em CI; o ambiente desta sessão não tem acesso de rede para instalar as dependências do projeto.
+- A validação macOS do projeto iOS passou no commit `3db49d0`. Os testes do adaptador nativo e o build web passaram no job Linux da execução `44427586045`; o job macOS dessa execução ainda está em andamento.
 
 ## Bloqueios e limites conhecidos
 
-- Este repositório ainda não tem projeto iOS nem pipeline de build iOS.
+- O projeto iOS é gerado durante o pipeline macOS; ainda não foi gerado IPA assinado nem distribuição instalável.
 - Para gerar e instalar um app iOS assinado será necessário configurar assinatura Apple e executar uma compilação iOS por Xcode em Mac ou serviço de build compatível. O acesso ao repositório, por si só, não fornece certificado, perfil de provisionamento nem autorização de distribuição.
 - Nenhuma alteração foi feita na branch `main` ou no deployment de produção durante esta auditoria.
