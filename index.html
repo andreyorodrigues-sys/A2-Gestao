@@ -554,7 +554,17 @@ body.a2-report-top .app{padding-top:0!important}
     }
 
     if (migration.migrated) {
-      for (const key of [...DATA_KEYS, ...SETTING_KEYS]) {
+      const legacyAliases = [
+        'clients','clientes','a2Clientes','vehicles','veiculos','a2Veiculos',
+        'services','servicos','a2Servicos','budgets','orcamentos','a2Orcamentos',
+        'agenda','a2Agenda','orders','ordens','os','a2Orders','history','historico',
+        'a2Historico','receivables','contasReceber','payments','recebimentos',
+        'transactions','lancamentosFinanceiros','crmActivities','a2Relacionamento',
+        'maintenance','a2Manutencoes','payables','contasPagar','recurring',
+        'despesasRecorrentes','serviceCosts','custosServicos','accounts',
+        'contasFinanceiras','goals','metasFinanceiras'
+      ];
+      for (const key of [...DATA_KEYS, ...SETTING_KEYS, ...legacyAliases]) {
         try { nativeStorage.removeItem(key); } catch (_) {}
       }
     }
