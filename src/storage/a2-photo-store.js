@@ -1,10 +1,8 @@
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import {
   makeA2PhotoReference,
-  mapA2OrderPhotos,
   parseA2DataUrl,
-  parseA2PhotoReference,
-  a2PhotoHash
+  parseA2PhotoReference
 } from './a2-photo-codec.js';
 
 const PHOTO_DIRECTORY = 'a2-photos';
@@ -39,16 +37,12 @@ function asDataUrl(mimeType, base64) {
 export async function externalizeA2OrderPhotos(snapshot, adapter = filesystemAdapter) {
   const written = new Set();
   let converted = 0;
-  const next = mapA2OrderPhotos(snapshot, (photo) => {
-    if (typeof photo !== 'string' || !parseA2DataUrl(photo)) return photo;
-    return photo;
-  });
-  const mapped = await mapA2OrderPhotosAsync(next, async (photo) => {
+  const mapped = await mapA2OrderPhotosAsync(snapshot, async (photo, order, stageName, index) => {
     const parsed = parseA2DataUrl(photo);
     if (!parsed) return photo;
-    const hash = a2PhotoHash(parsed.base64);
-    const extension = parsed.mimeType === 'image/png' ? 'png' : 'jpg';
-    const path = PHOTO_DIRECTORY + '/' + hash + '.' + extension;
+    const extension = parsed.mimeType === 'image/png' ? 'png' : parsed.mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const orderId = encodeURIComponent(String(order?.id || 'sem-id'));
+    const path = PHOTO_DIRECTORY + '/' + orderId + '/' + stageName + '-' + index + '.' + extension;
     if (!written.has(path)) {
       await adapter.write(path, parsed.base64);
       written.add(path);
@@ -72,7 +66,7 @@ async function mapA2OrderPhotosAsync(snapshot, mapper) {
       const nextStage = { ...stage };
       if (Array.isArray(stage.photos)) {
         nextStage.photos = [];
-        for (const photo of stage.photos) nextStage.photos.push(await mapper(photo));
+        for (let index = 0; index < stage.photos.length; index += 1) nextStage.photos.push(await mapper(stage.photos[index], order, stageName, index));
       }
       if (Array.isArray(stage.items)) {
         nextStage.items = [];
@@ -82,7 +76,7 @@ async function mapA2OrderPhotosAsync(snapshot, mapper) {
             continue;
           }
           const nextItem = { ...item, photos: [] };
-          for (const photo of item.photos) nextItem.photos.push(await mapper(photo));
+          for (let photoIndex = 0; photoIndex < item.photos.length; photoIndex += 1) nextItem.photos.push(await mapper(item.photos[photoIndex], order, stageName + '-item-' + itemIndex, photoIndex));
           nextStage.items.push(nextItem);
         }
       }
