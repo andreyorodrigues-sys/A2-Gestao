@@ -70,7 +70,8 @@ async function mapA2OrderPhotosAsync(snapshot, mapper) {
       }
       if (Array.isArray(stage.items)) {
         nextStage.items = [];
-        for (const item of stage.items) {
+        for (let itemIndex = 0; itemIndex < stage.items.length; itemIndex += 1) {
+          const item = stage.items[itemIndex];
           if (!item || typeof item !== 'object' || !Array.isArray(item.photos)) {
             nextStage.items.push(item);
             continue;
