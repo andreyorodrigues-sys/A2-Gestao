@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  browser-storage:
+  chromium-storage:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,3 +27,19 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test migration, writes and backup restoration
         run: node tests/a2-browser-idb-smoke.mjs
+
+  webkit-storage:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save --no-package-lock playwright
+      - name: Install WebKit
+        run: npx playwright install webkit
+      - name: Test migration, writes and backup restoration on WebKit
+        run: BROWSER=webkit node tests/a2-browser-idb-smoke.mjs
