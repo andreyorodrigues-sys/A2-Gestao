@@ -11,7 +11,7 @@
   "theme_color": "#0d0f12",
   "icons": [
     {
-      "src": "/a2_icon_180.jpg",
+      "src": "/a2_icon_180.jpg?v=3",
       "sizes": "180x180",
       "type": "image/jpeg",
       "purpose": "any"
