@@ -1,0 +1,20 @@
+{
+  "name": "A2 Gestão",
+  "short_name": "A2 Gestão",
+  "description": "Gestão da A2 Estética Automotiva",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f12",
+  "theme_color": "#0d0f12",
+  "icons": [
+    {
+      "src": "/a2_icon_180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
