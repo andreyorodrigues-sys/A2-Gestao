@@ -112,7 +112,7 @@ async function withTransaction(work) {
   }
 }
 
-async function replaceSnapshot(snapshot) {
+async function replaceSnapshot(snapshot, migrationInfo = null) {
   return withTransaction(async () => {
     await run('DELETE FROM a2_records');
     await run('DELETE FROM a2_settings');
@@ -143,6 +143,12 @@ async function replaceSnapshot(snapshot) {
       'INSERT OR REPLACE INTO a2_metadata(meta_key, meta_value) VALUES (?, ?)',
       ['last_write_at', timestamp]
     );
+    if (migrationInfo) {
+      await run(
+        'INSERT OR REPLACE INTO a2_migrations(migration_key, completed_at, source_checksum, record_count) VALUES (?, ?, ?, ?)',
+        [migrationInfo.key, timestamp, migrationInfo.sourceChecksum, snapshot.totalRecords]
+      );
+    }
 
     const verification = await readSnapshotUnlocked();
     for (const category of A2_DATA_KEYS) {
@@ -188,12 +194,11 @@ export async function readA2NativeSnapshot() {
  */
 export async function importLegacyA2Backup(backupObject) {
   const snapshot = validateA2Backup(backupObject);
-  const result = await replaceSnapshot(snapshot);
   const sourceChecksum = backupObject?.manifest?.checksum || null;
-  await run(
-    'INSERT OR REPLACE INTO a2_migrations(migration_key, completed_at, source_checksum, record_count) VALUES (?, ?, ?, ?)',
-    ['legacy-json-v2-v3', new Date().toISOString(), sourceChecksum, result.totalRecords]
-  );
+  const result = await replaceSnapshot(snapshot, {
+    key: 'legacy-json-v2-v3',
+    sourceChecksum
+  });
   return {
     ...result,
     photoReferences: snapshot.photoReferences,
