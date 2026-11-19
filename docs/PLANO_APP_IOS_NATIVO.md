@@ -28,13 +28,23 @@ Não é seguro simplesmente adicionar Capacitor e gerar um ícone. A camada de p
 
 ## Etapas de implementação
 
-- [ ] Criar base de projeto Capacitor e configuração iOS sem tocar na produção.
-- [ ] Implementar e validar SQLite + repositório e migrações.
-- [ ] Migrar persistência e referências de fotos.
-- [ ] Adaptar backup/restauração e testar os backups V2/V3 existentes.
+- [x] Criar base inicial de projeto Capacitor/Vite e configuração iOS sem tocar na produção.
+- [x] Criar módulo inicial de SQLite com tabelas de registros, configurações, migrações e metadados; gravação integral em transação e conferência de contagens.
+- [x] Criar validador puro de backups V2/V3 e testes automatizados do formato legado.
+- [ ] Ligar o bootstrap e os módulos da interface ao repositório SQLite; remover as leituras/gravações diretas de localStorage.
+- [ ] Adaptar a exportação/restauração para operar diretamente no SQLite e testar arquivos reais V2/V3.
+- [ ] Separar fotos em arquivos no diretório privado do app e migrar Data URLs sem perda; nesta etapa inicial as fotos ainda permanecem dentro do JSON dos registros no SQLite.
 - [ ] Testar os fluxos funcionais completos em simulador e iPhone físico.
 - [ ] Configurar assinatura Apple e gerar build instalável para distribuição privada/TestFlight.
 - [ ] Só após aceite explícito, planejar eventual substituição da versão web.
+
+## Progresso técnico da etapa atual
+
+- Dependências iniciais fixadas: Capacitor 8.6.2 e `@capacitor-community/sqlite` 8.1.1.
+- Módulos criados: `src/storage/a2-backup-format.js` e `src/storage/a2-sqlite-store.js`.
+- Testes criados: `tests/a2-backup-format.test.js` (V2, V3, checksum alterado, categoria ausente e registro inválido).
+- O módulo SQLite ainda não foi ligado ao app principal. Não declarar a persistência nativa como ativa até que o bootstrap e os 60 pontos de gravação/leitura do legado tenham sido migrados e testados.
+- Os testes foram adicionados ao repositório, mas ainda aguardam execução em CI; o ambiente desta sessão não tem acesso de rede para instalar as dependências do projeto.
 
 ## Bloqueios e limites conhecidos
 
