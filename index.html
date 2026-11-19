@@ -553,21 +553,18 @@ await (async function a2BrowserStorageBootstrap(){
       if (!Array.isArray(snapshot.data[key])) throw new Error('Não foi possível validar a categoria ' + key + '.');
     }
 
-    if (migration.migrated) {
-      const legacyAliases = [
-        'clients','clientes','a2Clientes','vehicles','veiculos','a2Veiculos',
-        'services','servicos','a2Servicos','budgets','orcamentos','a2Orcamentos',
-        'agenda','a2Agenda','orders','ordens','os','a2Orders','history','historico',
-        'a2Historico','receivables','contasReceber','payments','recebimentos',
-        'transactions','lancamentosFinanceiros','crmActivities','a2Relacionamento',
-        'maintenance','a2Manutencoes','payables','contasPagar','recurring',
-        'despesasRecorrentes','serviceCosts','custosServicos','accounts',
-        'contasFinanceiras','goals','metasFinanceiras'
-      ];
-      for (const key of [...DATA_KEYS, ...SETTING_KEYS, ...legacyAliases]) {
-        try { nativeStorage.removeItem(key); } catch (_) {}
-      }
-    }
+    const shouldCleanLegacyStorage = migration.migrated;
+    const legacyKeysToClean = [
+      ...DATA_KEYS, ...SETTING_KEYS,
+      'clients','clientes','a2Clientes','vehicles','veiculos','a2Veiculos',
+      'services','servicos','a2Servicos','budgets','orcamentos','a2Orcamentos',
+      'agenda','a2Agenda','orders','ordens','os','a2Orders','history','historico',
+      'a2Historico','receivables','contasReceber','payments','recebimentos',
+      'transactions','lancamentosFinanceiros','crmActivities','a2Relacionamento',
+      'maintenance','a2Manutencoes','payables','contasPagar','recurring',
+      'despesasRecorrentes','serviceCosts','custosServicos','accounts',
+      'contasFinanceiras','goals','metasFinanceiras'
+    ];
 
     const clone = value => JSON.parse(JSON.stringify(value));
     let persistedSnapshot = clone(snapshot);
@@ -729,6 +726,11 @@ await (async function a2BrowserStorageBootstrap(){
 
   try {
     await runLegacyScripts();
+    if (window.a2BrowserStorageReady && typeof shouldCleanLegacyStorage !== 'undefined' && shouldCleanLegacyStorage) {
+      for (const key of legacyKeysToClean) {
+        try { nativeStorage.removeItem(key); } catch (_) {}
+      }
+    }
   } catch (error) {
     console.error('Falha ao iniciar os módulos do A2 Gestão:', error);
     alert('O A2 Gestão encontrou uma falha ao iniciar. Preserve seus backups. ' + (error?.message || error));
