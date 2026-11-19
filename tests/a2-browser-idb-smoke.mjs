@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 
 const root = process.cwd();
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8' };
@@ -23,7 +23,8 @@ const server = createServer(async (req, res) => {
 });
 await new Promise(resolveListen => server.listen(4173, '127.0.0.1', resolveListen));
 
-const browser = await chromium.launch({ headless: true });
+const browserType = process.env.BROWSER === 'webkit' ? webkit : chromium;
+const browser = await browserType.launch({ headless: true });
 const page = await browser.newPage();
 const pageErrors = [];
 page.on('pageerror', error => pageErrors.push(error.message));
