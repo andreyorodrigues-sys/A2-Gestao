@@ -77,9 +77,10 @@ try {
   const backup = await page.evaluate(({ dataKeys, settingKeys }) => {
     const data = Object.fromEntries(dataKeys.map(key => [key, []]));
     data.a2clients = [{ id: 'imported-client', name: 'Cliente importado' }];
+    const photoData = 'data:image/png;base64,' + 'A'.repeat(5 * 1024 * 1024);
     data.a2orders = [{
       id: 'imported-order',
-      inspectionStart: { photos: ['data:image/png;base64,AAAA'], items: [] },
+      inspectionStart: { photos: [photoData], items: [] },
       inspectionEnd: { photos: [], items: [] }
     }];
     data.a2inventory = [{ id: 'imported-product', name: 'Shampoo', qty: 3 }];
@@ -107,7 +108,7 @@ try {
   });
   assert.equal(imported.clients[0]?.id, 'imported-client');
   assert.equal(imported.orders[0]?.id, 'imported-order');
-  assert.equal(imported.orders[0]?.inspectionStart?.photos?.[0], 'data:image/png;base64,AAAA');
+  assert.ok(imported.orders[0]?.inspectionStart?.photos?.[0]?.length > 5 * 1024 * 1024, 'large photo payload must be stored without localStorage quota');
   assert.equal(imported.inventory[0]?.id, 'imported-product');
   assert.equal(imported.period, 'year');
 
