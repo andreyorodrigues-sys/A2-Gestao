@@ -138,6 +138,68 @@ export async function replaceA2BrowserSnapshot(snapshot, { dataKeys, settingKeys
   }
 }
 
+
+
+/** Persist only the categories/settings changed by the legacy UI. */
+export async function writeA2BrowserChanges(snapshot, {
+  dataKeys = [],
+  settingKeys = [],
+  allDataKeys,
+  indexedDBApi
+} = {}) {
+  if (!snapshot || !snapshot.data || !allDataKeys) throw new Error('Snapshot incompleto para salvar no IndexedDB.');
+  for (const category of dataKeys) {
+    if (!Array.isArray(snapshot.data[category])) throw new Error('Categoria inválida: ' + category + '.');
+  }
+  const db = await openA2BrowserDatabase(indexedDBApi);
+  try {
+    const tx = db.transaction([RECORDS, SETTINGS, META], 'readwrite');
+    const records = tx.objectStore(RECORDS);
+    const index = records.index('byCategory');
+    for (const category of dataKeys) {
+      const request = index.openCursor(IDBKeyRange.only(category));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+          return;
+        }
+        const list = snapshot.data[category];
+        for (let ordinal = 0; ordinal < list.length; ordinal += 1) {
+          records.put({
+            key: category + '::' + ordinal,
+            category,
+            ordinal,
+            payload: list[ordinal]
+          });
+        }
+      };
+    }
+    const settingsStore = tx.objectStore(SETTINGS);
+    for (const key of settingKeys) {
+      const value = snapshot.settings?.[key] ?? null;
+      if (value === null) settingsStore.delete(key);
+      else settingsStore.put({ key, value });
+    }
+    const totalRecords = allDataKeys.reduce((sum, key) =>
+      sum + (Array.isArray(snapshot.data[key]) ? snapshot.data[key].length : 0), 0);
+    tx.objectStore(META).put({
+      key: 'snapshot',
+      value: {
+        format: 'a2-browser-idb',
+        savedAt: new Date().toISOString(),
+        categories: allDataKeys.length,
+        records: totalRecords
+      }
+    });
+    await transactionDone(tx);
+    return { ok: true, records: totalRecords };
+  } finally {
+    db.close();
+  }
+}
+
 /** One-time, non-destructive migration from the old localStorage keys. */
 export async function migrateA2LocalStorage({ dataKeys, settingKeys, storage = globalThis.localStorage, indexedDBApi } = {}) {
   const current = await readA2BrowserSnapshot({ dataKeys, settingKeys, indexedDBApi });
