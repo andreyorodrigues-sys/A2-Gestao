@@ -3604,6 +3604,101 @@ window.renderFinance=function(){
  }
 };
 const oldRefresh=window.refresh;if(typeof oldRefresh==='function')window.refresh=function(id){oldRefresh(id);if(id==='financeiro')window.renderFinance()};
+
+/* A2 Financeiro: camada exclusivamente visual e de organização dos blocos. */
+const a2FinanceRenderBeforeLayout=window.renderFinance;
+window.renderFinance=function(){
+ if(typeof a2FinanceRenderBeforeLayout==='function')a2FinanceRenderBeforeLayout();
+ const root=document.getElementById('a2FinanceV7');if(!root)return;
+ const host=document.getElementById('financeList'),legacy=document.getElementById('a2FinanceV6');
+ if(legacy){Array.from(legacy.children).forEach(n=>root.insertBefore(n,host||null));if(host){host.innerHTML='';host.style.display='none';}}
+ const heading=n=>(n.querySelector('h3')?.textContent||'').trim().toLowerCase();
+ const rank=n=>{
+  if(n.classList?.contains('v7quick'))return 0;
+  if(n.id==='a2FinOverview')return 1;
+  if(n.classList?.contains('a2-fin-kpis'))return 90;
+  const h=heading(n);
+  if(h.includes('registrar pagamento'))return 2;
+  if(h.includes('contas a receber'))return 3;
+  if(h.includes('contas a pagar'))return 4;
+  if(h.includes('histórico de contas pagas'))return 5;
+  if(h.includes('despesas recorrentes'))return 6;
+  if(h.includes('lançamento avulso'))return 7;
+  if(h.includes('movimentações do mês'))return 8;
+  if(h.includes('contas financeiras'))return 9;
+  if(h.includes('custos e rentabilidade'))return 10;
+  if(h.includes('fluxo de caixa'))return 11;
+  if(h.includes('despesas por categoria'))return 12;
+  if(h.includes('rentabilidade estimada'))return 13;
+  if(h.includes('conciliação de extrato'))return 14;
+  return 15;
+ };
+ const nodes=Array.from(root.children).filter(n=>!n.classList?.contains('v7grid'));
+ nodes.sort((a,b)=>rank(a)-rank(b));nodes.forEach(n=>root.appendChild(n));
+ root.querySelectorAll('.v7grid').forEach(n=>n.style.display='none');
+ const quick=root.querySelector('.v7quick');
+ if(quick){
+  quick.innerHTML='';
+  [['＋ Receber','a2PaymentForm'],['＋ Lançamento','a2ExpenseForm'],['＋ Conta a pagar','__add'],['Relatórios','__report']].forEach(([label,target])=>{
+   const b=document.createElement('button');b.type='button';b.textContent=label;
+   b.addEventListener('click',()=>{
+    if(target==='__add'){window.a2V7AddPayable?.();return;}
+    let el=target==='__report'?Array.from(root.querySelectorAll('.v7panel')).find(p=>/fluxo de caixa|despesas por categoria|rentabilidade estimada|conciliação de extrato/i.test(heading(p))):document.getElementById(target);
+    el?.scrollIntoView({behavior:'smooth',block:'start'});
+   });quick.appendChild(b);
+  });
+ }
+};
+const a2FinanceLayoutStyle=document.createElement('style');
+a2FinanceLayoutStyle.id='a2-finance-mobile-redesign';
+a2FinanceLayoutStyle.textContent=`
+#financeiro>.kpi,#financeiro>.stats{display:none!important}
+#financeiro>h1{margin:18px 0 3px;font-size:26px;letter-spacing:-.5px}
+#financeiro>.sub{margin-bottom:14px;font-size:12px}
+#a2FinanceV7{display:flex;flex-direction:column;gap:11px;min-width:0}
+#a2FinanceV7 .v7quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 2px}
+#a2FinanceV7 .v7quick button{min-height:43px;border:1px solid var(--line);border-radius:11px;background:var(--card2);color:var(--text);font-size:12px;font-weight:750;padding:9px 8px}
+#a2FinanceV7 .v7quick button:first-child{background:var(--orange);border-color:var(--orange);color:#17191d}
+#a2FinanceV7 .v7panel,#a2FinanceV7 .a2-fin-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin:0;min-width:0;box-shadow:none}
+#a2FinanceV7 .v7panel h3,#a2FinanceV7 .a2-fin-panel h3{font-size:14px;line-height:1.3;font-weight:800;margin:0 0 10px}
+#a2FinanceV7 .v7grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:9px 0}
+#a2FinanceV7 .v7box{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;box-shadow:none;min-width:0}
+#a2FinanceV7 .v7box small{font-size:10px;line-height:1.35}
+#a2FinanceV7 .v7box b{font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+#a2FinanceV7 .v7row{display:flex;align-items:flex-start;gap:9px;padding:11px 0;border-bottom:1px solid var(--line);min-width:0}
+#a2FinanceV7 .v7row>div:first-child{flex:1;min-width:0}
+#a2FinanceV7 .v7row b{font-size:12px;overflow-wrap:anywhere}
+#a2FinanceV7 .v7muted,#a2FinanceV7 .smallnote{font-size:10px;line-height:1.45;color:var(--muted)}
+#a2FinanceV7 .v7bill-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;min-width:0}
+#a2FinanceV7 button{border-radius:9px;font-weight:700}
+#a2FinanceV7 .v7bill-actions button,#a2FinanceV7 .mini{min-height:32px;padding:7px 9px;font-size:10px}
+#a2FinanceV7 .a2-fin-kpis{display:none!important}
+#a2FinanceV7 .a2-fin-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0}
+#a2FinanceV7 .a2-fin-form label{display:flex;flex-direction:column;gap:5px;margin:0;min-width:0;color:var(--muted);font-size:10px;font-weight:700}
+#a2FinanceV7 .a2-fin-form input,#a2FinanceV7 .a2-fin-form select{width:100%;min-width:0;min-height:41px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:#0f1216;color:var(--text);font-size:13px}
+#a2FinanceV7 .a2-fin-form .wide,#a2FinanceV7 .a2-fin-form button{grid-column:1/-1}
+#a2FinanceV7 .a2-fin-form button{min-height:42px;margin:0;padding:10px 12px;font-size:12px}
+#a2FinanceV7 .a2-fin-card{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;margin:8px 0}
+#a2FinanceV7 .a2-fin-card>p{font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+#a2FinanceV7 .a2-fin-status{display:inline-block;padding:4px 8px;border-radius:20px;background:#34302a;color:#f2bd78;font-size:10px;font-weight:800}
+#a2FinanceV7 .a2-fin-status.paid{background:#17372a;color:#78d7a6}
+#a2FinanceV7 .a2-fin-status.partial{background:#3a3020;color:#f2bd78}
+#a2FinanceV7 .v7actions{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}
+#a2FinanceV7 .v7actions button{flex:1 1 130px;min-height:38px;margin:0;padding:8px 10px;font-size:11px}
+#a2FinanceV7 progress{height:9px;border-radius:20px;overflow:hidden}
+#a2FinanceV7 .empty{padding:16px 10px;font-size:11px;line-height:1.45}
+#a2FinanceV7 section{scroll-margin-top:14px}
+@media(max-width:380px){
+ #a2FinanceV7 .v7panel,#a2FinanceV7 .a2-fin-panel{padding:11px}
+ #a2FinanceV7 .v7box{padding:9px}
+ #a2FinanceV7 .v7box b{font-size:15px}
+ #a2FinanceV7 .v7bill-actions{justify-content:flex-start;width:100%}
+ #a2FinanceV7 .v7row{flex-wrap:wrap}
+ #a2FinanceV7 .a2-fin-form{grid-template-columns:1fr}
+ #a2FinanceV7 .a2-fin-form .wide,#a2FinanceV7 .a2-fin-form button{grid-column:1}
+}
+`;
+document.head.appendChild(a2FinanceLayoutStyle);
 })();
 </script>
 
