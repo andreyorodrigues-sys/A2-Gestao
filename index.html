@@ -3502,7 +3502,7 @@ body{background:#080a0d;color:var(--text)}
 (function(){
 'use strict';
 if(window.a2FinanceAdvancedV1)return;window.a2FinanceAdvancedV1=true;
-const oldRender=window.renderFinance,fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),iso=()=>new Date().toISOString().slice(0,10);let selectedMonth=iso().slice(0,7);const ym=()=>selectedMonth,dt=v=>String(v||'').slice(0,10),sum=(a,f)=>a.reduce((n,x)=>n+(Number(f(x))||0),0);
+const oldRender=window.renderFinance,legacyFinanceHost=document.getElementById('financeList'),fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),iso=()=>new Date().toISOString().slice(0,10);let selectedMonth=iso().slice(0,7);const ym=()=>selectedMonth,dt=v=>String(v||'').slice(0,10),sum=(a,f)=>a.reduce((n,x)=>n+(Number(f(x))||0),0);
 const escx=v=>typeof esc==='function'?esc(v??''):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const acc=()=>accounts.filter(a=>a.active!==false),tx=()=>transactions,pm=()=>payments;
 function openRec(){return receivables.map(r=>{const paid=sum(pm().filter(p=>String(p.receivableId)===String(r.id)),p=>p.amount);return {r,balance:Math.max(0,Number(r.amount||0)-paid)}}).filter(x=>x.balance>.009)}
@@ -3570,7 +3570,7 @@ window.renderFinance=function(){
    if(note)note.textContent='Os saldos por conta são calculados pelo saldo inicial mais recebimentos e movimentações vinculadas. Registros antigos sem conta ficam fora dos saldos individuais.';
   }
  });
- const financeList=document.getElementById('financeList');
+ const financeList=legacyFinanceHost;
  const paymentForm=document.getElementById('a2PaymentForm');
  if(paymentForm){
   paymentForm.id='a2PaymentForm';
