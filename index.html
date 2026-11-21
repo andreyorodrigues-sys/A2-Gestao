@@ -3504,7 +3504,7 @@ body{background:#080a0d;color:var(--text)}
 (function(){
 'use strict';
 if(window.a2FinanceAdvancedV1)return;window.a2FinanceAdvancedV1=true;
-const oldRender=window.renderFinance,legacyFinanceHost=document.getElementById('financeList'),fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),iso=()=>new Date().toISOString().slice(0,10);let selectedMonth=iso().slice(0,7);const ym=()=>selectedMonth,dt=v=>String(v||'').slice(0,10),monthOf=v=>{let s=String(v??'').trim();if(/^\\d{4}-\\d{2}/.test(s))return s.slice(0,7);let br=s.match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})/);return br?br[3]+'-'+br[2]:''},sum=(a,f)=>a.reduce((n,x)=>n+(Number(f(x))||0),0);
+const oldRender=window.renderFinance,legacyFinanceHost=document.getElementById('financeList'),fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),iso=()=>new Date().toISOString().slice(0,10);let selectedMonth=iso().slice(0,7);const ym=()=>selectedMonth,dt=v=>String(v||'').slice(0,10),monthOf=v=>{let s=String(v??'').trim();if(/^\d{4}-\d{2}/.test(s))return s.slice(0,7);let br=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return br?br[3]+'-'+br[2]:''},sum=(a,f)=>a.reduce((n,x)=>n+(Number(f(x))||0),0);
 const escx=v=>typeof esc==='function'?esc(v??''):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const acc=()=>accounts.filter(a=>a.active!==false),tx=()=>transactions,pm=()=>payments;
 function openRec(){return receivables.map(r=>{const paid=sum(pm().filter(p=>String(p.receivableId)===String(r.id)),p=>p.amount);return {r,balance:Math.max(0,Number(r.amount||0)-paid)}}).filter(x=>x.balance>.009)}
