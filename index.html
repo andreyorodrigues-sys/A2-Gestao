@@ -2627,7 +2627,19 @@ window.a2V9Ready=true;
     wrap.style.pointerEvents='none';
     wrap.style.zIndex='2147483646';
     wrap.style.visibility='visible';
+    wrap.className='a2pf-export';
     wrap.innerHTML=pdfHTML(o);
+    /* A escala reduzida é exclusiva da prévia no celular; nunca deve entrar no arquivo A4. */
+    const exportStyle=document.createElement('style');
+    exportStyle.textContent=`
+      .a2pf-export .a2pf-page{transform:none!important;transform-origin:top left!important;margin:0!important;width:794px!important;min-height:1123px!important;max-width:none!important}
+      .a2pf-export .a2pf-head,.a2pf-export .a2pf-company-block,.a2pf-export .a2pf-docline,
+      .a2pf-export .a2pf-grid>div,.a2pf-export .a2pf-services tr,
+      .a2pf-export .a2pf-check,.a2pf-export .a2pf-photos img,
+      .a2pf-export .a2pf-signature,.a2pf-export .a2pf-footer{break-inside:avoid!important;page-break-inside:avoid!important}
+      .a2pf-export .a2pf-photos{break-inside:auto!important;page-break-inside:auto!important}
+    `;
+    wrap.appendChild(exportStyle);
     document.body.appendChild(wrap);
     const target=wrap.firstElementChild;
     try{
@@ -2643,7 +2655,7 @@ window.a2V9Ready=true;
         image:{type:'jpeg',quality:.95},
         html2canvas:{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#fff',logging:false},
         jsPDF:{unit:'pt',format:'a4',orientation:'portrait'},
-        pagebreak:{mode:['css','legacy']}
+        pagebreak:{mode:['css','legacy'],avoid:['.a2pf-head','.a2pf-company-block','.a2pf-docline','.a2pf-grid>div','.a2pf-services tr','.a2pf-check','.a2pf-photos img','.a2pf-signature','.a2pf-footer']}
       }).from(target).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
     }finally{wrap.remove();}
   }
