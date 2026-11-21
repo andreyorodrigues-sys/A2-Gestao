@@ -1436,15 +1436,15 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
       if(!raw)continue;
       if(raw instanceof Date){if(!Number.isNaN(raw.getTime()))return raw;continue}
       const value=String(raw).trim();
-      let m=value.match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/);
+      let m=value.match(/^(\d{2})\\/(\d{2})\\/(\d{4})$/);
       if(m){const d=new Date(+m[3],+m[2]-1,+m[1]);if(!Number.isNaN(d.getTime()))return d;continue}
-      m=value.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+      m=value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if(m){const d=new Date(+m[1],+m[2]-1,+m[3]);if(!Number.isNaN(d.getTime()))return d;continue}
       const d=new Date(value);if(!Number.isNaN(d.getTime()))return d;
     }
     return null;
   }
-  function isCompletedReportOrder(o){const status=String(o?.status||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');return ['concluida','concluido','finalizada','finalizado','completed'].includes(status)}
+  function isCompletedReportOrder(o){const status=String(o?.status||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');return ['concluida','concluido','finalizada','finalizado','completed'].includes(status)}
   window.renderServiceReport=function(){let c=document.getElementById('rptClient')?.value||'',a=document.getElementById('rptStart')?.value||'',b=document.getElementById('rptEnd')?.value||'';let ini=a?new Date(a+'T00:00:00'):new Date('2000-01-01T00:00:00'),fim=b?new Date(b+'T23:59:59'):new Date('2999-12-31T23:59:59');let rows=orders.filter(o=>isCompletedReportOrder(o)&&(!c||String(o.clientId)===String(c))).filter(o=>{let d=dateOf(o);return d&&d>=ini&&d<=fim});let total=rows.reduce((x,o)=>x+Number(o.totalValue??o.value??0),0);let nome=c?clientName(c):'Todos os clientes';document.getElementById('rptResult').innerHTML=`<div class="a2-report"><b>RELATÓRIO DE SERVIÇOS EXECUTADOS</b>\nCliente: ${esc(nome)}\nPeríodo: ${esc(a||'Início')} a ${esc(b||'Hoje')}\n\n${rows.map(o=>`${o.completedAt?new Date(o.completedAt).toLocaleDateString('pt-BR'):o.created} • ${vehicleLabel(o.vehicleId)} • ${o.service} • ${money(o.totalValue??o.value)}`).join('\n')||'Nenhum serviço concluído encontrado.'}\n\nTotal de serviços: ${rows.length}\nTOTAL DO PERÍODO: ${money(total)}</div><div class="a2-actions"><button class="primary" onclick="a2CopyReport('rptResult')">Copiar relatório</button><button class="primary" onclick="a2SendReportWA()">💬 Enviar WhatsApp</button></div>`;window.a2LastReport={nome,rows,total,a,b};};
   window.a2CopyReport=function(id){let t=document.getElementById(id)?.innerText||'';navigator.clipboard?.writeText(t).then(()=>showToast()).catch(()=>alert(t));};
   window.a2SendReportWA=function(){let r=window.a2LastReport;if(!r)return;let phone='';if(r.nome!=='Todos os clientes'){let c=clients.find(x=>x.name===r.nome);phone=c?.phone||''}let text=document.getElementById('rptResult').innerText;let digits=(phone||'').replace(/\\D/g,'');window.open('https://wa.me/'+(digits||'')+'?text='+encodeURIComponent(text),'_blank')};
