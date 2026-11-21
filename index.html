@@ -2223,91 +2223,7 @@ window.a2V9Ready=true;
 
 
 
-<script type="application/x-a2-deferred" id="a2-finance-functional-rebuild-20261120">
-(function(){
-'use strict';
-if(window.__a2FinanceFunctionalRebuild)return;window.__a2FinanceFunctionalRebuild=true;
-const root=()=>document.getElementById('a2FinanceV7');
-const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-const n=v=>Math.round((Number(String(v??'').replace(',','.'))||0)*100)/100;
-const moneyF=v=>money(n(v));
-const escF=v=>typeof esc==='function'?esc(v??''):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const methods=['Pix','Dinheiro','Débito','Crédito','Transferência','Outros'];
-const cats=['Aluguel','Água','Energia','Produtos e materiais','Equipamentos e manutenção','Taxas financeiras','Impostos','Pró-labore / retirada','Investimentos','Operacional','Outros'];
-let period=today().slice(0,7),tab='visao';
-const inMonth=v=>String(v||'').slice(0,7)===period;
-const sum=(a,f)=>a.reduce((x,y)=>x+n(f(y)),0);
-const paidRec=r=>sum(payments.filter(p=>String(p.receivableId)===String(r.id)),p=>p.amount);
-const balRec=r=>Math.max(0,n(r.amount)-paidRec(r));
-const paidBill=p=>sum(Array.isArray(p.paymentEntries)?p.paymentEntries:[],x=>x.amount);
-const balBill=p=>Math.max(0,n(p.amount)-paidBill(p));
-const billStatus=p=>balBill(p)<=.009?'Pago':paidBill(p)>0?'Parcial':'Pendente';
-const recIn=()=>payments.filter(p=>inMonth(p.date));
-const txIn=()=>transactions.filter(t=>inMonth(t.date));
-const incoming=()=>sum(recIn(),p=>p.amount)+sum(txIn().filter(t=>t.type==='income'),t=>t.amount);
-const outgoing=()=>sum(txIn().filter(t=>t.type==='expense'),t=>t.amount);
-const persist=()=>{try{saveAll();return true}catch(e){alert('Falha ao salvar: '+e.message);return false}};
-const accountsHtml=()=>'<option value="">Não informar</option>'+accounts.filter(a=>a.active!==false).map(a=>'<option value="'+escF(a.id)+'">'+escF(a.name)+'</option>').join('');
-const field=(label,name,type,value,extra)=>'<label>'+label+'<input name="'+name+'" type="'+type+'" value="'+(value||'')+'" '+(extra||'')+'></label>';
-const select=(label,name,options)=>'<label>'+label+'<select name="'+name+'">'+options+'</select></label>';
-const methodsHtml=methods.map(x=>'<option>'+x+'</option>').join('');
-const categoriesHtml=cats.map(x=>'<option>'+x+'</option>').join('');
-const panel=(title,html)=>'<section class="v7panel"><h3>'+title+'</h3>'+html+'</section>';
-const row=(title,meta,value,buttons)=>'<div class="v7row"><div><b>'+escF(title)+'</b><div class="v7muted">'+meta+'</div></div><div class="v7bill-actions"><b>'+value+'</b>'+ (buttons||'')+'</div></div>';
-function render(){
- const old=window.__a2FinanceBaseRender;if(typeof old==='function'){try{old()}catch(e){console.warn(e)}}
- const el=root();if(!el)return;
- const income=incoming(),expense=outgoing(),cash=income-expense;
- const openRec=receivables.filter(r=>balRec(r)>0);
- const openBills=payables.filter(p=>billStatus(p)!=='Pago'&&inMonth(p.dueDate||p.createdAt));
- const overdue=openBills.filter(p=>String(p.dueDate||'')<today());
- const recRows=receivables.filter(r=>inMonth(r.createdAt||r.dueDate)).map(r=>row((clients.find(c=>String(c.id)===String(r.clientId))?.name)||r.clientName||'Cliente',escF(r.description||'Serviço A2')+' • Recebido '+moneyF(paidRec(r))+' • Saldo '+moneyF(balRec(r)),moneyF(r.amount),balRec(r)>0?'<button class="mini" onclick="a2FinReceive(\''+escF(r.id)+'\')">Receber</button>':'' )).join('')||'<p class="v7muted">Nenhuma conta criada neste período.</p>';
- const billRows=openBills.map(p=>row(p.description,escF(p.category||'Despesa')+' • Vence '+escF(p.dueDate||'')+' • Pago '+moneyF(paidBill(p))+' • Saldo '+moneyF(balBill(p)),moneyF(p.amount),'<button class="mini" onclick="a2FinPay(\''+escF(p.id)+'\')">Pagar</button><button class="mini" onclick="a2V7EditPayable(\''+escF(p.id)+'\')">Editar</button><button class="mini danger" onclick="a2FinDeleteBill(\''+escF(p.id)+'\')">Excluir</button>')).join('')||'<p class="v7muted">Nenhuma conta pendente no período.</p>';
- const paidRows=payables.filter(p=>billStatus(p)==='Pago'&&(p.paymentEntries||[]).some(x=>inMonth(x.date))).map(p=>row(p.description,escF(p.category||'Despesa')+' • Quitada',moneyF(p.amount))).join('')||'<p class="v7muted">Nenhuma conta quitada neste período.</p>';
- const movements=[...recIn().map(p=>({date:p.date,desc:'Recebimento de cliente',detail:p.method||'Recebimento',amount:n(p.amount),type:'income'})),...txIn().map(t=>({date:t.date,desc:t.description,detail:t.category||t.method||'Movimentação',amount:n(t.amount),type:t.type}))].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- const movRows=movements.map(x=>row(x.desc,escF(x.date)+' • '+escF(x.detail),(x.type==='expense'?'− ':'+ ')+moneyF(x.amount))).join('')||'<p class="v7muted">Nenhuma movimentação no período.</p>';
- const catTotals={};txIn().filter(t=>t.type==='expense').forEach(t=>{let c=t.category||'Outros';catTotals[c]=(catTotals[c]||0)+n(t.amount)});
- const catRows=Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a]).map(c=>row(c,'Despesas pagas',moneyF(catTotals[c]))).join('')||'<p class="v7muted">Sem despesas pagas neste período.</p>';
- el.innerHTML='<style>'+
- '#a2FinanceV7 .v7toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}'+
- '#a2FinanceV7 .v7toolbar input{flex:1;min-width:140px}'+
- '#a2FinanceV7 .v7tabs{display:flex;gap:6px;overflow:auto;margin:8px 0;padding:3px 0}'+
- '#a2FinanceV7 .v7tabs button{white-space:nowrap;border:1px solid var(--line);border-radius:10px;background:var(--card2);color:var(--text);padding:9px 12px;font-size:12px}'+
- '#a2FinanceV7 .v7tabs button.active{border-color:var(--orange);color:var(--orange)}'+
- '#a2FinanceV7 .v7form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}'+
- '#a2FinanceV7 .v7form label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);min-width:0}'+
- '#a2FinanceV7 .v7form input,#a2FinanceV7 .v7form select{width:100%;box-sizing:border-box;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:13px}'+
- '#a2FinanceV7 .v7form .wide,#a2FinanceV7 .v7form button{grid-column:1/-1}'+
- '#a2FinanceV7 .v7metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}'+
- '#a2FinanceV7 .v7metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}'+
- '#a2FinanceV7 .v7metric small{display:block;color:var(--muted);font-size:11px}'+
- '#a2FinanceV7 .v7metric b{display:block;font-size:18px;margin-top:5px;overflow-wrap:anywhere}'+
- '#a2FinanceV7 .v7row{align-items:flex-start;flex-wrap:wrap}#a2FinanceV7 .v7bill-actions{justify-content:flex-end;flex-wrap:wrap}'+
- '@media(max-width:380px){#a2FinanceV7 .v7form{grid-template-columns:1fr}#a2FinanceV7 .v7form .wide,#a2FinanceV7 .v7form button{grid-column:1}#a2FinanceV7 .v7metric b{font-size:16px}}'+
- '</style>'+
- '<div class="v7toolbar"><b>Período</b><input type="month" value="'+period+'" onchange="a2FinPeriod(this.value)"><button class="mini" onclick="a2FinPeriod(\''+today().slice(0,7)+'\')">Mês atual</button></div>'+
- '<nav class="v7tabs"><button class="'+(tab==='visao'?'active':'')+'" onclick="a2FinTab(\'visao\')">Visão geral</button><button class="'+(tab==='receber'?'active':'')+'" onclick="a2FinTab(\'receber\')">A receber</button><button class="'+(tab==='pagar'?'active':'')+'" onclick="a2FinTab(\'pagar\')">A pagar</button><button class="'+(tab==='mov'?'active':'')+'" onclick="a2FinTab(\'mov\')">Movimentações</button><button class="'+(tab==='rel'?'active':'')+'" onclick="a2FinTab(\'rel\')">Relatórios</button></nav>'+
- '<div class="v7quick"><button onclick="a2FinTab(\'receber\')">＋ Receber</button><button onclick="a2FinTab(\'mov\')">＋ Lançar entrada/saída</button><button onclick="a2FinTab(\'pagar\')">＋ Nova conta a pagar</button><button onclick="a2V7AddRecurring()">＋ Despesa recorrente</button></div>'+
- '<div '+(tab==='visao'?'':'hidden')+'><div class="v7metrics"><div class="v7metric"><small>Recebido no período</small><b>'+moneyF(income)+'</b></div><div class="v7metric"><small>Despesas pagas</small><b>'+moneyF(expense)+'</b></div><div class="v7metric"><small>Saldo de caixa do período</small><b>'+moneyF(cash)+'</b></div><div class="v7metric"><small>Saldo total a receber</small><b>'+moneyF(sum(openRec,r=>balRec(r)))+'</b></div></div><p class="v7muted">Saldo do período = recebimentos efetivos menos despesas efetivamente pagas. Não é lucro líquido.</p>'+panel('Contas vencidas',overdue.map(p=>row(p.description,escF(p.dueDate)+' • Saldo '+moneyF(balBill(p)),moneyF(balBill(p)),'<button class="mini" onclick="a2FinPay(\''+escF(p.id)+'\')">Pagar</button>')).join('')||'<p class="v7muted">Nenhuma conta vencida.</p>')+'</div>'+
- '<div '+(tab==='receber'?'':'hidden')+'>'+panel('Registrar recebimento','<form class="v7form" onsubmit="a2FinSubmitReceive(event)"><label class="wide">Conta a receber<select name="receivableId" required><option value="">Selecione a OS / cliente</option>'+openRec.map(r=>'<option value="'+escF(r.id)+'">'+escF((clients.find(c=>String(c.id)===String(r.clientId))?.name)||r.clientName||'Cliente')+' • Saldo '+moneyF(balRec(r))+'</option>').join('')+'</select></label>'+field('Valor recebido','amount','number','','min="0.01" step="0.01" required')+field('Data','date','date',today(),'required')+select('Forma de pagamento','method',methodsHtml)+select('Conta que recebeu','accountId',accountsHtml())+field('Observação','notes','text','','maxlength="180"')+'<button class="primary" type="submit">Salvar recebimento</button></form>')+panel('Contas a receber',recRows)+'</div>'+
- '<div '+(tab==='pagar'?'':'hidden')+'>'+panel('Cadastrar conta a pagar','<form class="v7form" onsubmit="a2FinSubmitBill(event)">'+field('Descrição','description','text','','required maxlength="120"')+field('Valor total (R$)','amount','number','','min="0.01" step="0.01" required')+field('Vencimento','dueDate','date',today(),'required')+select('Categoria','category',categoriesHtml)+select('Conta financeira','accountId',accountsHtml())+'<button class="primary" type="submit">Cadastrar conta</button></form>')+panel('Contas pendentes e parciais',billRows)+panel('Contas quitadas',paidRows)+'</div>'+
- '<div '+(tab==='mov'?'':'hidden')+'>'+panel('Lançamento avulso','<form class="v7form" onsubmit="a2FinSubmitTx(event)">'+select('Tipo','type','<option value="income">Entrada</option><option value="expense">Saída</option>')+field('Valor (R$)','amount','number','','min="0.01" step="0.01" required')+field('Descrição','description','text','','required maxlength="120"')+field('Data','date','date',today(),'required')+select('Categoria','category',categoriesHtml)+select('Forma de pagamento','method',methodsHtml)+select('Conta financeira','accountId',accountsHtml())+'<button class="primary" type="submit">Salvar movimentação</button></form>')+panel('Histórico de movimentações',movRows)+panel('Contas / caixas / maquininhas','<button class="secondary" onclick="a2V7AddAccount()">＋ Cadastrar conta</button>'+accounts.map(a=>row(a.name,escF(a.type||'Conta')+' • Saldo inicial '+moneyF(a.openingBalance),'Ativa')).join(''))+'</div>'+
- '<div '+(tab==='rel'?'':'hidden')+'>'+panel('Resumo do período','<div class="v7metrics"><div class="v7metric"><small>Recebido</small><b>'+moneyF(income)+'</b></div><div class="v7metric"><small>Despesas pagas</small><b>'+moneyF(expense)+'</b></div><div class="v7metric"><small>Saldo de caixa</small><b>'+moneyF(cash)+'</b></div><div class="v7metric"><small>A pagar em aberto</small><b>'+moneyF(sum(openBills,p=>balBill(p)))+'</b></div></div>')+panel('Despesas por categoria',catRows)+panel('A receber',recRows)+panel('A pagar',billRows)+'</div>';
-}
-window.a2FinPeriod=function(v){if(!/^\d{4}-\d{2}$/.test(v||''))return;period=v;render()};
-window.a2FinTab=function(v){tab=v;render()};
-window.a2FinSubmitReceive=function(e){e.preventDefault();const d=Object.fromEntries(new FormData(e.target));const r=receivables.find(x=>String(x.id)===String(d.receivableId));if(!r)return alert('Selecione uma conta válida.');const amount=n(d.amount),bal=balRec(r);if(!(amount>0)||amount>bal+.009)return alert('Valor inválido. Saldo disponível: '+moneyF(bal));payments.push({id:uid(),receivableId:r.id,budgetId:r.budgetId||'',orderId:r.orderId||'',amount,date:d.date||today(),method:d.method||'Outros',notes:d.notes||'',accountId:d.accountId||'',createdAt:new Date().toISOString()});if(persist())render()};
-window.a2FinReceive=function(id){tab='receber';render();const f=root()?.querySelector('form[onsubmit*="a2FinSubmitReceive"]');if(f)f.elements.receivableId.value=id};
-window.a2FinSubmitBill=function(e){e.preventDefault();const d=Object.fromEntries(new FormData(e.target)),amount=n(d.amount);if(!(amount>0))return alert('Informe um valor válido.');payables.push({id:uid(),description:d.description.trim(),amount,dueDate:d.dueDate,category:d.category||'Outros',accountId:d.accountId||'',status:'Pendente',paymentEntries:[],createdAt:new Date().toISOString()});if(persist())render()};
-window.a2FinPay=function(id){const p=payables.find(x=>String(x.id)===String(id));if(!p)return;const balance=balBill(p);const amount=prompt('Saldo pendente: '+moneyF(balance)+'\\nValor que será pago agora:',balance.toFixed(2));if(amount===null)return;const date=prompt('Data do pagamento (AAAA-MM-DD):',today());if(!date||!/^\d{4}-\d{2}-\d{2}$/.test(date))return alert('Data inválida.');const method=prompt('Forma de pagamento: Pix, Dinheiro, Débito, Crédito ou Transferência','Pix');if(method===null)return;const value=n(amount);if(!(value>0)||value>balance+.009)return alert('O valor não pode ultrapassar o saldo pendente.');if(!Array.isArray(p.paymentEntries))p.paymentEntries=[];const entry={id:uid(),amount:value,date,method,accountId:p.accountId||'',createdAt:new Date().toISOString()};p.paymentEntries.push(entry);p.status=balBill(p)<=.009?'Pago':'Parcial';p.paidAmount=paidBill(p);p.paidDate=date;p.paidMethod=method;transactions.push({id:uid(),type:'expense',description:'Pagamento: '+p.description,amount:value,date,method,category:p.category||'Despesa',accountId:entry.accountId,payableId:p.id,payablePaymentId:entry.id,createdAt:new Date().toISOString()});if(persist())render()};
-window.a2FinDeleteBill=function(id){if(!confirm('Excluir esta conta e os pagamentos vinculados?'))return;payables=payables.filter(p=>String(p.id)!==String(id));transactions=transactions.filter(t=>String(t.payableId)!==String(id));if(persist())render()};
-window.a2FinSubmitTx=function(e){e.preventDefault();const d=Object.fromEntries(new FormData(e.target)),amount=n(d.amount);if(!(amount>0))return alert('Informe um valor válido.');transactions.push({id:uid(),type:d.type==='expense'?'expense':'income',description:d.description.trim(),amount,date:d.date||today(),method:d.method||'Outros',category:d.category||'Outros',accountId:d.accountId||'',createdAt:new Date().toISOString()});if(persist())render()};
-window.a2V7PayPayable=window.a2FinPay;
-window.a2V7DeletePayable=window.a2FinDeleteBill;
-const previous=window.renderFinance;window.__a2FinanceBaseRender=previous;window.renderFinance=render;
-const oldRefresh=window.refresh;if(typeof oldRefresh==='function')window.refresh=function(id){oldRefresh(id);if(id==='financeiro')render()};
-})();
-</script>
+
 </body></html>`;
     popup.document.open();
     popup.document.write(html);
@@ -3814,6 +3730,93 @@ document.head.appendChild(a2FinanceLayoutStyle);
 })();
 </script>
 
+<script id="a2-finance-functional-rebuild-20261120">
+
+(function(){
+'use strict';
+if(window.__a2FinanceFunctionalRebuild)return;window.__a2FinanceFunctionalRebuild=true;
+const root=()=>document.getElementById('a2FinanceV7');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const n=v=>Math.round((Number(String(v??'').replace(',','.'))||0)*100)/100;
+const moneyF=v=>money(n(v));
+const escF=v=>typeof esc==='function'?esc(v??''):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const methods=['Pix','Dinheiro','Débito','Crédito','Transferência','Outros'];
+const cats=['Aluguel','Água','Energia','Produtos e materiais','Equipamentos e manutenção','Taxas financeiras','Impostos','Pró-labore / retirada','Investimentos','Operacional','Outros'];
+let period=today().slice(0,7),tab='visao';
+const inMonth=v=>String(v||'').slice(0,7)===period;
+const sum=(a,f)=>a.reduce((x,y)=>x+n(f(y)),0);
+const paidRec=r=>sum(payments.filter(p=>String(p.receivableId)===String(r.id)),p=>p.amount);
+const balRec=r=>Math.max(0,n(r.amount)-paidRec(r));
+const paidBill=p=>sum(Array.isArray(p.paymentEntries)?p.paymentEntries:[],x=>x.amount);
+const balBill=p=>Math.max(0,n(p.amount)-paidBill(p));
+const billStatus=p=>balBill(p)<=.009?'Pago':paidBill(p)>0?'Parcial':'Pendente';
+const recIn=()=>payments.filter(p=>inMonth(p.date));
+const txIn=()=>transactions.filter(t=>inMonth(t.date));
+const incoming=()=>sum(recIn(),p=>p.amount)+sum(txIn().filter(t=>t.type==='income'),t=>t.amount);
+const outgoing=()=>sum(txIn().filter(t=>t.type==='expense'),t=>t.amount);
+const persist=()=>{try{saveAll();return true}catch(e){alert('Falha ao salvar: '+e.message);return false}};
+const accountsHtml=()=>'<option value="">Não informar</option>'+accounts.filter(a=>a.active!==false).map(a=>'<option value="'+escF(a.id)+'">'+escF(a.name)+'</option>').join('');
+const field=(label,name,type,value,extra)=>'<label>'+label+'<input name="'+name+'" type="'+type+'" value="'+(value||'')+'" '+(extra||'')+'></label>';
+const select=(label,name,options)=>'<label>'+label+'<select name="'+name+'">'+options+'</select></label>';
+const methodsHtml=methods.map(x=>'<option>'+x+'</option>').join('');
+const categoriesHtml=cats.map(x=>'<option>'+x+'</option>').join('');
+const panel=(title,html)=>'<section class="v7panel"><h3>'+title+'</h3>'+html+'</section>';
+const row=(title,meta,value,buttons)=>'<div class="v7row"><div><b>'+escF(title)+'</b><div class="v7muted">'+meta+'</div></div><div class="v7bill-actions"><b>'+value+'</b>'+ (buttons||'')+'</div></div>';
+function render(){
+ const old=window.__a2FinanceBaseRender;if(typeof old==='function'){try{old()}catch(e){console.warn(e)}}
+ const el=root();if(!el)return;
+ const income=incoming(),expense=outgoing(),cash=income-expense;
+ const openRec=receivables.filter(r=>balRec(r)>0);
+ const openBills=payables.filter(p=>billStatus(p)!=='Pago'&&inMonth(p.dueDate||p.createdAt));
+ const overdue=openBills.filter(p=>String(p.dueDate||'')<today());
+ const recRows=receivables.filter(r=>inMonth(r.createdAt||r.dueDate)).map(r=>row((clients.find(c=>String(c.id)===String(r.clientId))?.name)||r.clientName||'Cliente',escF(r.description||'Serviço A2')+' • Recebido '+moneyF(paidRec(r))+' • Saldo '+moneyF(balRec(r)),moneyF(r.amount),balRec(r)>0?'<button class="mini" onclick="a2FinReceive(\''+escF(r.id)+'\')">Receber</button>':'' )).join('')||'<p class="v7muted">Nenhuma conta criada neste período.</p>';
+ const billRows=openBills.map(p=>row(p.description,escF(p.category||'Despesa')+' • Vence '+escF(p.dueDate||'')+' • Pago '+moneyF(paidBill(p))+' • Saldo '+moneyF(balBill(p)),moneyF(p.amount),'<button class="mini" onclick="a2FinPay(\''+escF(p.id)+'\')">Pagar</button><button class="mini" onclick="a2V7EditPayable(\''+escF(p.id)+'\')">Editar</button><button class="mini danger" onclick="a2FinDeleteBill(\''+escF(p.id)+'\')">Excluir</button>')).join('')||'<p class="v7muted">Nenhuma conta pendente no período.</p>';
+ const paidRows=payables.filter(p=>billStatus(p)==='Pago'&&(p.paymentEntries||[]).some(x=>inMonth(x.date))).map(p=>row(p.description,escF(p.category||'Despesa')+' • Quitada',moneyF(p.amount))).join('')||'<p class="v7muted">Nenhuma conta quitada neste período.</p>';
+ const movements=[...recIn().map(p=>({date:p.date,desc:'Recebimento de cliente',detail:p.method||'Recebimento',amount:n(p.amount),type:'income'})),...txIn().map(t=>({date:t.date,desc:t.description,detail:t.category||t.method||'Movimentação',amount:n(t.amount),type:t.type}))].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ const movRows=movements.map(x=>row(x.desc,escF(x.date)+' • '+escF(x.detail),(x.type==='expense'?'− ':'+ ')+moneyF(x.amount))).join('')||'<p class="v7muted">Nenhuma movimentação no período.</p>';
+ const catTotals={};txIn().filter(t=>t.type==='expense').forEach(t=>{let c=t.category||'Outros';catTotals[c]=(catTotals[c]||0)+n(t.amount)});
+ const catRows=Object.keys(catTotals).sort((a,b)=>catTotals[b]-catTotals[a]).map(c=>row(c,'Despesas pagas',moneyF(catTotals[c]))).join('')||'<p class="v7muted">Sem despesas pagas neste período.</p>';
+ el.innerHTML='<style>'+
+ '#a2FinanceV7 .v7toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}'+
+ '#a2FinanceV7 .v7toolbar input{flex:1;min-width:140px}'+
+ '#a2FinanceV7 .v7tabs{display:flex;gap:6px;overflow:auto;margin:8px 0;padding:3px 0}'+
+ '#a2FinanceV7 .v7tabs button{white-space:nowrap;border:1px solid var(--line);border-radius:10px;background:var(--card2);color:var(--text);padding:9px 12px;font-size:12px}'+
+ '#a2FinanceV7 .v7tabs button.active{border-color:var(--orange);color:var(--orange)}'+
+ '#a2FinanceV7 .v7form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}'+
+ '#a2FinanceV7 .v7form label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);min-width:0}'+
+ '#a2FinanceV7 .v7form input,#a2FinanceV7 .v7form select{width:100%;box-sizing:border-box;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:13px}'+
+ '#a2FinanceV7 .v7form .wide,#a2FinanceV7 .v7form button{grid-column:1/-1}'+
+ '#a2FinanceV7 .v7metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}'+
+ '#a2FinanceV7 .v7metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}'+
+ '#a2FinanceV7 .v7metric small{display:block;color:var(--muted);font-size:11px}'+
+ '#a2FinanceV7 .v7metric b{display:block;font-size:18px;margin-top:5px;overflow-wrap:anywhere}'+
+ '#a2FinanceV7 .v7row{align-items:flex-start;flex-wrap:wrap}#a2FinanceV7 .v7bill-actions{justify-content:flex-end;flex-wrap:wrap}'+
+ '@media(max-width:380px){#a2FinanceV7 .v7form{grid-template-columns:1fr}#a2FinanceV7 .v7form .wide,#a2FinanceV7 .v7form button{grid-column:1}#a2FinanceV7 .v7metric b{font-size:16px}}'+
+ '</style>'+
+ '<div class="v7toolbar"><b>Período</b><input type="month" value="'+period+'" onchange="a2FinPeriod(this.value)"><button class="mini" onclick="a2FinPeriod(\''+today().slice(0,7)+'\')">Mês atual</button></div>'+
+ '<nav class="v7tabs"><button class="'+(tab==='visao'?'active':'')+'" onclick="a2FinTab(\'visao\')">Visão geral</button><button class="'+(tab==='receber'?'active':'')+'" onclick="a2FinTab(\'receber\')">A receber</button><button class="'+(tab==='pagar'?'active':'')+'" onclick="a2FinTab(\'pagar\')">A pagar</button><button class="'+(tab==='mov'?'active':'')+'" onclick="a2FinTab(\'mov\')">Movimentações</button><button class="'+(tab==='rel'?'active':'')+'" onclick="a2FinTab(\'rel\')">Relatórios</button></nav>'+
+ '<div class="v7quick"><button onclick="a2FinTab(\'receber\')">＋ Receber</button><button onclick="a2FinTab(\'mov\')">＋ Lançar entrada/saída</button><button onclick="a2FinTab(\'pagar\')">＋ Nova conta a pagar</button><button onclick="a2V7AddRecurring()">＋ Despesa recorrente</button></div>'+
+ '<div '+(tab==='visao'?'':'hidden')+'><div class="v7metrics"><div class="v7metric"><small>Recebido no período</small><b>'+moneyF(income)+'</b></div><div class="v7metric"><small>Despesas pagas</small><b>'+moneyF(expense)+'</b></div><div class="v7metric"><small>Saldo de caixa do período</small><b>'+moneyF(cash)+'</b></div><div class="v7metric"><small>Saldo total a receber</small><b>'+moneyF(sum(openRec,r=>balRec(r)))+'</b></div></div><p class="v7muted">Saldo do período = recebimentos efetivos menos despesas efetivamente pagas. Não é lucro líquido.</p>'+panel('Contas vencidas',overdue.map(p=>row(p.description,escF(p.dueDate)+' • Saldo '+moneyF(balBill(p)),moneyF(balBill(p)),'<button class="mini" onclick="a2FinPay(\''+escF(p.id)+'\')">Pagar</button>')).join('')||'<p class="v7muted">Nenhuma conta vencida.</p>')+'</div>'+
+ '<div '+(tab==='receber'?'':'hidden')+'>'+panel('Registrar recebimento','<form class="v7form" onsubmit="a2FinSubmitReceive(event)"><label class="wide">Conta a receber<select name="receivableId" required><option value="">Selecione a OS / cliente</option>'+openRec.map(r=>'<option value="'+escF(r.id)+'">'+escF((clients.find(c=>String(c.id)===String(r.clientId))?.name)||r.clientName||'Cliente')+' • Saldo '+moneyF(balRec(r))+'</option>').join('')+'</select></label>'+field('Valor recebido','amount','number','','min="0.01" step="0.01" required')+field('Data','date','date',today(),'required')+select('Forma de pagamento','method',methodsHtml)+select('Conta que recebeu','accountId',accountsHtml())+field('Observação','notes','text','','maxlength="180"')+'<button class="primary" type="submit">Salvar recebimento</button></form>')+panel('Contas a receber',recRows)+'</div>'+
+ '<div '+(tab==='pagar'?'':'hidden')+'>'+panel('Cadastrar conta a pagar','<form class="v7form" onsubmit="a2FinSubmitBill(event)">'+field('Descrição','description','text','','required maxlength="120"')+field('Valor total (R$)','amount','number','','min="0.01" step="0.01" required')+field('Vencimento','dueDate','date',today(),'required')+select('Categoria','category',categoriesHtml)+select('Conta financeira','accountId',accountsHtml())+'<button class="primary" type="submit">Cadastrar conta</button></form>')+panel('Contas pendentes e parciais',billRows)+panel('Contas quitadas',paidRows)+'</div>'+
+ '<div '+(tab==='mov'?'':'hidden')+'>'+panel('Lançamento avulso','<form class="v7form" onsubmit="a2FinSubmitTx(event)">'+select('Tipo','type','<option value="income">Entrada</option><option value="expense">Saída</option>')+field('Valor (R$)','amount','number','','min="0.01" step="0.01" required')+field('Descrição','description','text','','required maxlength="120"')+field('Data','date','date',today(),'required')+select('Categoria','category',categoriesHtml)+select('Forma de pagamento','method',methodsHtml)+select('Conta financeira','accountId',accountsHtml())+'<button class="primary" type="submit">Salvar movimentação</button></form>')+panel('Histórico de movimentações',movRows)+panel('Contas / caixas / maquininhas','<button class="secondary" onclick="a2V7AddAccount()">＋ Cadastrar conta</button>'+accounts.map(a=>row(a.name,escF(a.type||'Conta')+' • Saldo inicial '+moneyF(a.openingBalance),'Ativa')).join(''))+'</div>'+
+ '<div '+(tab==='rel'?'':'hidden')+'>'+panel('Resumo do período','<div class="v7metrics"><div class="v7metric"><small>Recebido</small><b>'+moneyF(income)+'</b></div><div class="v7metric"><small>Despesas pagas</small><b>'+moneyF(expense)+'</b></div><div class="v7metric"><small>Saldo de caixa</small><b>'+moneyF(cash)+'</b></div><div class="v7metric"><small>A pagar em aberto</small><b>'+moneyF(sum(openBills,p=>balBill(p)))+'</b></div></div>')+panel('Despesas por categoria',catRows)+panel('A receber',recRows)+panel('A pagar',billRows)+'</div>';
+}
+window.a2FinPeriod=function(v){if(!/^\d{4}-\d{2}$/.test(v||''))return;period=v;render()};
+window.a2FinTab=function(v){tab=v;render()};
+window.a2FinSubmitReceive=function(e){e.preventDefault();const d=Object.fromEntries(new FormData(e.target));const r=receivables.find(x=>String(x.id)===String(d.receivableId));if(!r)return alert('Selecione uma conta válida.');const amount=n(d.amount),bal=balRec(r);if(!(amount>0)||amount>bal+.009)return alert('Valor inválido. Saldo disponível: '+moneyF(bal));payments.push({id:uid(),receivableId:r.id,budgetId:r.budgetId||'',orderId:r.orderId||'',amount,date:d.date||today(),method:d.method||'Outros',notes:d.notes||'',accountId:d.accountId||'',createdAt:new Date().toISOString()});if(persist())render()};
+window.a2FinReceive=function(id){tab='receber';render();const f=root()?.querySelector('form[onsubmit*="a2FinSubmitReceive"]');if(f)f.elements.receivableId.value=id};
+window.a2FinSubmitBill=function(e){e.preventDefault();const d=Object.fromEntries(new FormData(e.target)),amount=n(d.amount);if(!(amount>0))return alert('Informe um valor válido.');payables.push({id:uid(),description:d.description.trim(),amount,dueDate:d.dueDate,category:d.category||'Outros',accountId:d.accountId||'',status:'Pendente',paymentEntries:[],createdAt:new Date().toISOString()});if(persist())render()};
+window.a2FinPay=function(id){const p=payables.find(x=>String(x.id)===String(id));if(!p)return;const balance=balBill(p);const amount=prompt('Saldo pendente: '+moneyF(balance)+'\\nValor que será pago agora:',balance.toFixed(2));if(amount===null)return;const date=prompt('Data do pagamento (AAAA-MM-DD):',today());if(!date||!/^\d{4}-\d{2}-\d{2}$/.test(date))return alert('Data inválida.');const method=prompt('Forma de pagamento: Pix, Dinheiro, Débito, Crédito ou Transferência','Pix');if(method===null)return;const value=n(amount);if(!(value>0)||value>balance+.009)return alert('O valor não pode ultrapassar o saldo pendente.');if(!Array.isArray(p.paymentEntries))p.paymentEntries=[];const entry={id:uid(),amount:value,date,method,accountId:p.accountId||'',createdAt:new Date().toISOString()};p.paymentEntries.push(entry);p.status=balBill(p)<=.009?'Pago':'Parcial';p.paidAmount=paidBill(p);p.paidDate=date;p.paidMethod=method;transactions.push({id:uid(),type:'expense',description:'Pagamento: '+p.description,amount:value,date,method,category:p.category||'Despesa',accountId:entry.accountId,payableId:p.id,payablePaymentId:entry.id,createdAt:new Date().toISOString()});if(persist())render()};
+window.a2FinDeleteBill=function(id){if(!confirm('Excluir esta conta e os pagamentos vinculados?'))return;payables=payables.filter(p=>String(p.id)!==String(id));transactions=transactions.filter(t=>String(t.payableId)!==String(id));if(persist())render()};
+window.a2FinSubmitTx=function(e){e.preventDefault();const d=Object.fromEntries(new FormData(e.target)),amount=n(d.amount);if(!(amount>0))return alert('Informe um valor válido.');transactions.push({id:uid(),type:d.type==='expense'?'expense':'income',description:d.description.trim(),amount,date:d.date||today(),method:d.method||'Outros',category:d.category||'Outros',accountId:d.accountId||'',createdAt:new Date().toISOString()});if(persist())render()};
+window.a2V7PayPayable=window.a2FinPay;
+window.a2V7DeletePayable=window.a2FinDeleteBill;
+const previous=window.renderFinance;window.__a2FinanceBaseRender=previous;window.renderFinance=render;
+const oldRefresh=window.refresh;if(typeof oldRefresh==='function')window.refresh=function(id){oldRefresh(id);if(id==='financeiro')render()};
+})();
+
+</script>
 </body></html>
 
 
