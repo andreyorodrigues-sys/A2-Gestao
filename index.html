@@ -2602,7 +2602,7 @@ window.a2V9Ready=true;
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
         .a2pf-page{width:210mm!important;min-height:297mm!important;padding:8mm 10mm!important;margin:0!important;transform:none!important;transform-origin:top left!important;max-width:none!important;background:#fff!important;color:#111!important;overflow:visible!important}
         .a2pf-logo{width:34mm!important;height:18mm!important;max-height:18mm!important;overflow:hidden!important;display:flex!important;align-items:center!important}
-        .a2pf-logo img{display:block!important;width:30mm!important;height:16mm!important;max-width:30mm!important;max-height:16mm!important;object-fit:contain!important;object-position:left center!important}
+        .a2pf-logo img{display:block!important;width:30mm!important;height:16mm!important;min-width:0!important;min-height:0!important;max-width:30mm!important;max-height:16mm!important;object-fit:contain!important;object-position:left center!important}
         .a2pf-head{display:grid!important;grid-template-columns:38mm 1fr 54mm!important;gap:3mm!important;min-height:22mm!important;break-inside:avoid!important;page-break-inside:avoid!important}
         .a2pf-sec{break-inside:auto!important;page-break-inside:auto!important}
         .a2pf-st,.a2pf-docline,.a2pf-company-block,.a2pf-signature,.a2pf-footer{break-inside:avoid!important;page-break-inside:avoid!important}
@@ -2611,7 +2611,8 @@ window.a2V9Ready=true;
         @media print{html,body{width:210mm!important}.a2pf-page{box-shadow:none!important}}
       `;
       w.document.open();
-      w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escA2f(numA2f(o))+' - A2 Estética Automotiva</title><style>'+css+'</style></head><body>'+page+'</body></html>');
+      const sourcePdfStyles=document.getElementById('a2pfStyles')?.textContent||'';
+      w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escA2f(numA2f(o))+' - A2 Estética Automotiva</title><style>'+sourcePdfStyles+'\n'+css+'</style></head><body>'+page+'</body></html>');
       w.document.close();
       const imgs=Array.from(w.document.images);
       Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;}))).then(()=>setTimeout(()=>{w.focus();w.print();},350));
