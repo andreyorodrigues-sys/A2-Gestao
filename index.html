@@ -777,7 +777,7 @@ await (async function a2BrowserStorageBootstrap(){
 <section class="view" id="whatsapp"><h1>WhatsApp</h1><div class="sub">Mensagens prontas, editáveis e personalizadas</div><div class="item"><div><h3>Mensagem para o cliente</h3><p>Escolha o cliente e o modelo que deseja enviar.</p></div><span class="wa">●</span></div><select class="search" id="waClient" onchange="fillWaVehicles();renderWhatsApp()"><option value="">Selecione o cliente</option></select><select class="search" id="waVehicle" onchange="renderWhatsApp()"><option value="">Selecione o veículo</option></select><select class="search" id="waTemplate" onchange="renderWhatsApp()"></select><div class="msg" id="waPreview">Selecione um cliente para visualizar a mensagem.</div><button class="primary" onclick="sendWhatsApp()">💬 Abrir no WhatsApp</button><div class="list-title">Modelos de mensagem</div><button class="secondary" onclick="newTemplate()">＋ Novo modelo</button><div id="templateList"></div><div id="templateEditor"></div><div class="wa-help"><b>Campos automáticos:</b> {cliente}, {veiculo}, {placa}, {servicos}, {valor}, {data}, {hora}.<br/>Você pode escrever esses campos na mensagem e o A2 Gestão preencherá automaticamente antes de abrir o WhatsApp.</div></section>
 <section class="view" id="financeiro"><h1>Financeiro</h1><div class="sub">Controle simples de entradas e serviços</div><div class="kpi"><div class="label">Total registrado</div><div class="money" id="financeTotal">R$ 0,00</div></div><div class="stats"><div class="stat"><div class="label">Orçamentos</div><b id="budgetCount">0</b></div><div class="stat"><div class="label">OS</div><b id="osCount">0</b></div><div class="stat"><div class="label">Recebidos</div><b id="paidCount">0</b></div></div><div id="a2FinanceV7"></div><div id="financeList"></div></section>
 <section class="view" id="crm"><h1>CRM e pós-venda</h1><div class="sub">Relacionamento, retorno e manutenção dos veículos atendidos pela A2.</div><div id="a2CrmRoot"></div></section>
-<section class="view" id="historico"><h1>Histórico</h1><div class="sub">Orçamentos, OS e serviços registrados</div><input class="search" id="historySearch" oninput="renderHistory()" placeholder="Buscar cliente, veículo ou placa..."/><div id="historyList"></div></section>
+<section class="view" id="historico"><h1>Histórico</h1><div class="sub">Orçamentos, ordens de serviço e atendimentos registrados</div><input class="search" id="historySearch" oninput="renderHistory()" placeholder="Buscar cliente, veículo ou placa..."/><div class="form" style="margin:10px 0"><label>Período</label><select id="historyPeriod" onchange="renderHistory()"><option value="all">Todo o período</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="year">Este ano</option><option value="custom">Personalizado</option></select><div id="historyCustomDates" style="display:none;gap:8px;grid-template-columns:1fr 1fr;margin-top:8px"><div><label>De</label><input type="date" id="historyStart" onchange="renderHistory()"/></div><div><label>Até</label><input type="date" id="historyEnd" onchange="renderHistory()"/></div></div></div><div id="historyCount" class="sub"></div><div id="historyList"></div></section>
 <section class="view" id="relatorios"><h1>Relatórios</h1><div class="sub">Indicadores da operação</div><div class="stats"><div class="stat"><div class="label">Clientes</div><b id="repClients">0</b></div><div class="stat"><div class="label">Veículos</div><b id="repVehicles">0</b></div><div class="stat"><div class="label">Serviços</div><b id="repServices">0</b></div></div><div class="item"><div><h3>Orçamentos</h3><p>Total de propostas registradas</p></div><strong id="repBudgets">0</strong></div><div class="item"><div><h3>Ordens de Serviço</h3><p>Serviços em acompanhamento</p></div><strong id="repOS">0</strong></div><div class="item"><div><h3>Valor em OS concluídas</h3><p>Total registrado como concluído</p></div><strong class="orange" id="repRevenue">R$ 0,00</strong></div></section>
 <section class="view" id="mais"><h1>Mais</h1><div class="sub">Todos os módulos do A2 Gestão</div><div class="module-grid"><button class="module" onclick="setCadastro('clientes');go('clientes')"><b>👥</b><span>Clientes</span></button><button class="module" onclick="setCadastro('veiculos');go('clientes')"><b>🚗</b><span>Veículos</span></button><button class="module" onclick="setCadastro('servicos');go('clientes')"><b>🧽</b><span>Serviços</span></button><button class="module" onclick="go('orcamentos')"><b>💰</b><span>Orçamentos</span></button><button class="module" onclick="go('ordens')"><b>📋</b><span>Ordens de Serviço</span></button><button class="module" onclick="go('agenda')"><b>📅</b><span>Agenda</span></button><button class="module" onclick="go('whatsapp')"><b>💬</b><span>WhatsApp</span></button><button class="module" onclick="go('financeiro')"><b>💵</b><span>Financeiro</span></button><button class="module" onclick="go('crm')"><b>🤝</b><span>CRM e pós-venda</span></button><button class="module" onclick="go('historico')"><b>📚</b><span>Histórico</span></button><button class="module" onclick="go('relatorios')"><b>📊</b><span>Relatórios</span></button><button class="module" onclick="go('seguranca')"><b>🛡️</b><span>Segurança e Backup</span></button></div></section>
 <section class="view" id="seguranca"><button class="back" onclick="go('mais')">‹ Voltar</button><h1>Segurança e Backup</h1><div class="sub">Proteção dos dados do A2 Gestão antes das próximas atualizações</div>
@@ -1209,7 +1209,58 @@ function showInspection(id){let o=orders.find(x=>x.id===id);if(!o)return;let v=v
 function closeInspection(){document.getElementById('inspectionModal')?.remove()}
 function renderOrders(){document.getElementById('osList').innerHTML=orders.length?orders.slice().reverse().map(o=>{let si=o.inspectionStart?.photos?.length||0,ei=o.inspectionEnd?.photos?.length||0;return `<div class="item"><div><h3>OS ${esc(o.id.slice(-5).toUpperCase())} • ${esc(clientName(o.clientId))}</h3><p>${esc(vehicleLabel(o.vehicleId))}<br>${esc(o.service)} • ${money(o.value)}<br><span class="pill">${esc(o.status)}</span><br>📸 Inicial: ${si} foto(s) • Final: ${ei} foto(s)</p></div><div class="item-actions"><button class="mini" onclick="openForm('os','${o.id}')">Editar</button><button class="mini" onclick="showInspection('${o.id}')">Checklist</button><button class="mini" onclick="osWA('${o.id}')">WhatsApp</button>${o.status==='Concluída'?`<button class="mini" onclick="openCertificate('${o.id}')">Certificado</button>`:''}</div></div>`}).join(''):'<div class="empty">Nenhuma OS cadastrada.</div>'}
 function renderFinance(){let total=orders.filter(o=>o.status==='Concluída').reduce((a,o)=>a+Number(o.value||0),0);document.getElementById('financeTotal').textContent=money(total);document.getElementById('budgetCount').textContent=budgets.length;document.getElementById('osCount').textContent=orders.length;document.getElementById('paidCount').textContent=orders.filter(o=>o.status==='Concluída').length;document.getElementById('financeList').innerHTML=orders.length?orders.slice().reverse().map(o=>`<div class="item"><div><h3>${esc(clientName(o.clientId))}</h3><p>${esc(o.service)} • ${esc(o.status)}</p></div><strong>${money(o.value)}</strong></div>`).join(''):'<div class="empty">Nenhum lançamento de OS.</div>'}
-function renderHistory(){let q=(document.getElementById('historySearch')?.value||'').toLowerCase();let list=history.filter(h=>(h.client+' '+h.vehicle+' '+h.service+' '+h.status).toLowerCase().includes(q));document.getElementById('historyList').innerHTML=list.length?list.map(h=>`<div class="item"><div><h3>${esc(h.client||'Cliente')} • ${esc(h.vehicle||'Veículo')}</h3><p>${esc(h.service)} • ${esc(h.date)}<br><span class="pill">${esc(h.status)}</span></p></div><strong>${money(h.value)}</strong></div>`).join(''):'<div class="empty">Nenhum histórico encontrado.</div>'}
+function renderHistory(){
+ const root=document.getElementById('historyList');if(!root)return;
+ const q=(document.getElementById('historySearch')?.value||'').trim().toLowerCase();
+ const period=document.getElementById('historyPeriod')?.value||'all';
+ const custom=document.getElementById('historyCustomDates');
+ if(custom)custom.style.display=period==='custom'?'grid':'none';
+ const parseDate=value=>{
+  if(!value)return null;
+  const raw=String(value).trim();
+  let m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+  m=raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if(m)return new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
+  const d=new Date(raw);return Number.isNaN(d.getTime())?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
+ };
+ const today=new Date();today.setHours(0,0,0,0);
+ let start=null,end=new Date(today);
+ if(period==='7'||period==='30'||period==='90'){start=new Date(today);start.setDate(start.getDate()-Number(period)+1);}
+ else if(period==='year')start=new Date(today.getFullYear(),0,1);
+ else if(period==='custom'){
+  start=parseDate(document.getElementById('historyStart')?.value);
+  end=parseDate(document.getElementById('historyEnd')?.value)||new Date(today);
+ }
+ const entries=[];
+ const seenOS=new Set();
+ // Mantém os registros históricos já existentes e usa OS como fonte complementar.
+ (Array.isArray(history)?history:[]).forEach(h=>{
+  if(h?.type==='OS'&&h.ref)seenOS.add(String(h.ref));
+  entries.push({key:'hist-'+(h.id||entries.length),type:h.type==='OS'?'Ordem de serviço':'Registro',client:h.client,vehicle:h.vehicle,service:h.service,date:h.date,status:h.status,value:h.value,ref:h.ref});
+ });
+ (Array.isArray(orders)?orders:[]).forEach(o=>{
+  if(seenOS.has(String(o.id)))return;
+  entries.push({key:'os-'+o.id,type:'Ordem de serviço',client:clientName(o.clientId),vehicle:vehicleLabel(o.vehicleId),service:o.service,date:o.completedAt||o.created,status:o.status,value:o.totalValue??o.value,ref:o.id});
+ });
+ // Orçamentos são mostrados separadamente, mesmo quando geraram uma OS.
+ (Array.isArray(budgets)?budgets:[]).forEach(b=>{
+  const rows=rowsForBudget(b);
+  entries.push({key:'budget-'+b.id,type:'Orçamento',client:b.name||clientName(b.clientId),vehicle:b.car||(b.vehicleId?vehicleLabel(b.vehicleId):''),service:rows.map(x=>x.service).filter(Boolean).join(' + ')||b.service||'Serviço orçado',date:b.created||b.date,status:b.status||'Aberto',value:b.totalValue??b.value,ref:b.id});
+ });
+ const filtered=entries.filter(e=>{
+  const searchable=[e.client,e.vehicle,e.service,e.status,e.type].join(' ').toLowerCase();
+  if(q&&!searchable.includes(q))return false;
+  const d=parseDate(e.date);
+  if((start||period!=='all')&&!d)return false;
+  if(start&&d<start)return false;
+  if(end&&d>end)return false;
+  return true;
+ }).sort((a,b)=>(parseDate(b.date)?.getTime()||0)-(parseDate(a.date)?.getTime()||0));
+ const count=document.getElementById('historyCount');
+ if(count)count.textContent=filtered.length+' registro(s) encontrado(s) • '+entries.length+' no total';
+ root.innerHTML=filtered.length?filtered.map(e=>`<div class="item"><div><h3>${esc(e.client||'Cliente')} • ${esc(e.vehicle||'Veículo')}</h3><p><span class="pill">${esc(e.type)}</span> ${esc(e.service||'')}</p><p>${esc(e.date||'Data não informada')}<br><span class="pill">${esc(e.status||'Registrado')}</span></p></div><strong>${money(e.value)}</strong></div>`).join(''):'<div class="empty">Nenhum registro encontrado para esta busca ou período.</div>';
+}
 function renderReports(){let total=orders.filter(o=>o.status==='Concluída').reduce((a,o)=>a+Number(o.value||0),0);document.getElementById('repClients').textContent=clients.length;document.getElementById('repVehicles').textContent=vehicles.length;document.getElementById('repServices').textContent=services.length;document.getElementById('repBudgets').textContent=budgets.length;document.getElementById('repOS').textContent=orders.length;document.getElementById('repRevenue').textContent=money(total)}
 const defaultTemplates={
 orcamento:{name:'Orçamento',text:'Olá, {cliente}! 👋\n\nSegue o orçamento da A2 Estética Automotiva referente ao seu {veiculo}.\n\nServiço: {servicos}\nValor: {valor}\n\nFico à disposição para agendarmos.\n\nA2 Estética Automotiva\nNão é só estética, é experiência.'},
