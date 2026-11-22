@@ -2629,32 +2629,35 @@ window.a2V9Ready=true;
   async function makePDFBlob(o){
     await loadPDFLib();
     const wrap=document.createElement('div');
-    /*
-      No iPhone/iPad: html2canvas pode devolver uma página em branco quando o
-      conteúdo está muito longe da viewport (left:-100000px) ou em display:none.
-      Mantemos o conteúdo dentro da área visível, transparente ao usuário, para
-      que o mesmo layout A4 da visualização seja realmente renderizado.
-    */
-    wrap.style.position='fixed';
-    wrap.style.left='0';
-    wrap.style.top='0';
-    wrap.style.width='794px';
-    wrap.style.minHeight='1123px';
-    wrap.style.background='#fff';
-    wrap.style.opacity='1';
-    wrap.style.pointerEvents='none';
-    wrap.style.zIndex='2147483646';
-    wrap.style.visibility='visible';
+    /* Exportação em dimensões A4 fixas: não herda a escala da prévia mobile. */
     wrap.className='a2pf-export';
+    Object.assign(wrap.style,{
+      position:'fixed',left:'0',top:'0',width:'794px',minHeight:'1123px',
+      background:'#fff',opacity:'1',pointerEvents:'none',zIndex:'2147483646',
+      visibility:'visible',overflow:'visible'
+    });
     wrap.innerHTML=pdfHTML(o);
-    /* A escala reduzida é exclusiva da prévia no celular; nunca deve entrar no arquivo A4. */
     const exportStyle=document.createElement('style');
     exportStyle.textContent=`
-      .a2pf-export .a2pf-page{transform:none!important;transform-origin:top left!important;margin:0!important;width:794px!important;min-height:1123px!important;max-width:none!important}
+      .a2pf-export .a2pf-page{
+        display:block!important;position:relative!important;float:none!important;
+        transform:none!important;transform-origin:top left!important;
+        margin:0!important;width:794px!important;min-width:794px!important;
+        max-width:794px!important;min-height:1123px!important;height:auto!important;
+        padding:30px 38px 34px!important;overflow:visible!important;
+        background:#fff!important;color:#111!important;box-sizing:border-box!important
+      }
+      .a2pf-export .a2pf-head{transform:none!important;min-width:0!important}
+      .a2pf-export .a2pf-logo{display:flex!important;width:145px!important;height:72px!important;max-width:145px!important;overflow:hidden!important}
+      .a2pf-export .a2pf-logo img{display:block!important;width:118px!important;height:auto!important;max-width:118px!important;max-height:72px!important;min-width:0!important;object-fit:contain!important}
+      .a2pf-export img{max-width:100%;height:auto}
+      .a2pf-export .a2pf-photos img{width:100%!important;height:150px!important;max-width:100%!important;object-fit:cover!important}
       .a2pf-export .a2pf-head,.a2pf-export .a2pf-company-block,.a2pf-export .a2pf-docline,
       .a2pf-export .a2pf-grid>div,.a2pf-export .a2pf-services tr,
       .a2pf-export .a2pf-check,.a2pf-export .a2pf-photos img,
-      .a2pf-export .a2pf-signature,.a2pf-export .a2pf-footer{break-inside:avoid!important;page-break-inside:avoid!important}
+      .a2pf-export .a2pf-signature,.a2pf-export .a2pf-footer{
+        break-inside:avoid!important;page-break-inside:avoid!important
+      }
       .a2pf-export .a2pf-photos{break-inside:auto!important;page-break-inside:auto!important}
     `;
     wrap.appendChild(exportStyle);
@@ -2663,16 +2666,40 @@ window.a2V9Ready=true;
     try{
       const imgs=Array.from(target.querySelectorAll('img'));
       await Promise.all(imgs.map(img=>new Promise(resolve=>{
-        if(img.complete){resolve();return;}
+        if(img.complete && img.naturalWidth>0){resolve();return;}
         img.onload=()=>resolve();img.onerror=()=>resolve();
+        setTimeout(resolve,5000);
       })));
-      await new Promise(r=>setTimeout(r,500));
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      const height=Math.max(1123,target.scrollHeight||0,target.offsetHeight||0);
       return await html2pdf().set({
         margin:0,
         filename:numA2f(o).replace(/[^a-z0-9_-]/gi,'_')+'.pdf',
-        image:{type:'jpeg',quality:.95},
-        html2canvas:{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#fff',logging:false},
-        jsPDF:{unit:'pt',format:'a4',orientation:'portrait'},
+        image:{type:'jpeg',quality:.96},
+        html2canvas:{
+          scale:1.5,width:794,height:height,windowWidth:794,windowHeight:height,
+          scrollX:0,scrollY:0,useCORS:true,allowTaint:true,
+          backgroundColor:'#fff',logging:false,
+          onclone:function(doc){
+            const page=doc.querySelector('.a2pf-export .a2pf-page');
+            if(page){
+              page.style.setProperty('transform','none','important');
+              page.style.setProperty('width','794px','important');
+              page.style.setProperty('min-width','794px','important');
+              page.style.setProperty('max-width','794px','important');
+              page.style.setProperty('min-height','1123px','important');
+              page.style.setProperty('height','auto','important');
+              page.style.setProperty('margin','0','important');
+            }
+            doc.querySelectorAll('.a2pf-export .a2pf-logo img').forEach(img=>{
+              img.style.setProperty('width','118px','important');
+              img.style.setProperty('height','auto','important');
+              img.style.setProperty('max-width','118px','important');
+              img.style.setProperty('max-height','72px','important');
+            });
+          }
+        },
+        jsPDF:{unit:'pt',format:'a4',orientation:'portrait',compress:true},
         pagebreak:{mode:['css','legacy'],avoid:['.a2pf-head','.a2pf-company-block','.a2pf-docline','.a2pf-grid>div','.a2pf-services tr','.a2pf-check','.a2pf-photos img','.a2pf-signature','.a2pf-footer']}
       }).from(target).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
     }finally{wrap.remove();}
