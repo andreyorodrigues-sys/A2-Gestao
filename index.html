@@ -745,6 +745,14 @@ await (async function a2BrowserStorageBootstrap(){
   }
 })();
 </script>
+<style id="a2-os-command-layout-neutral">
+.a2-os-command-box{margin-top:16px;padding:14px;border:1px solid #303640;border-radius:14px;background:#171a1f}
+.a2-os-command-title{margin:0 0 12px;text-align:center;font-size:10px;font-weight:800;letter-spacing:1.2px;color:#aeb4bd}
+.a2-os-command-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.a2-os-command-box .a2-os-action{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:48px!important;margin:0!important;padding:10px 7px!important;border:1px solid #343b45!important;border-radius:10px!important;background:#22262d!important;color:#f1f2f4!important;box-shadow:none!important;font-size:10px!important;font-weight:750!important;letter-spacing:.25px!important;line-height:1.25!important;text-align:center!important;white-space:normal!important}
+.a2-os-command-box .a2-os-action:active{background:#2a3038!important;border-color:#4a525e!important;transform:scale(.99)}
+@media(max-width:380px){.a2-os-command-box{padding:11px}.a2-os-command-grid{gap:7px}.a2-os-command-box .a2-os-action{min-height:46px!important;font-size:9.5px!important;padding:8px 5px!important}}
+</style>
 </head><body><main class="app">
 <header class="top"><div class="brand">A2 <span>GESTÃO</span></div><div class="avatar">A</div></header>
 <section class="view active" id="home">
@@ -2284,14 +2292,11 @@ window.a2V9Ready=true;
       <section class="inspection a2-os-inspection"><h3>CHECKLIST / VISTORIA — SAÍDA</h3><label class="a2-km">KM de saída<input name="kmExit" inputmode="numeric" type="number" min="0" value="${escA2(o.kmExit??'')}" placeholder="Ex.: 85425"></label><div class="hint">Marque os itens conferidos antes da entrega. Ao final da lista, registre as fotos gerais da saída.</div><div class="check-grid">${checks('end',end)}</div><button type="button" class="primary a2-photo-btn" onclick="document.getElementById('endPhotoInput').click()">📷 Tirar fotos da saída</button><input id="endPhotoInput" type="file" accept="image/*" capture="environment" multiple onchange="handleInspectionPhotos('end',this)"><div class="photo-count" id="endPhotoCount">${end.photos?.length||0} foto(s) registrada(s)</div><div class="photo-preview a2-os-photo-preview" id="endPhotoPreview">${photoThumbs(end.photos||[])||''}</div><label class="a2-notes">Observações da saída<textarea name="notesExit" placeholder="Registre informações da entrega...">${escA2(o.notesExit||'')}</textarea></label></section>
       <div class="a2-os-command-box">
   <div class="a2-os-command-title">COMANDOS DA OS</div>
-  <div class="a2-os-command-grid a2-os-command-grid-four">
-    <button type="button" class="secondary" onclick="saveOSOnly('${escA2(o.id)}')">SALVAR ALTERAÇÕES</button>
-    <button type="button" class="primary" onclick="startOSService('${escA2(o.id)}')">▶ INICIAR</button>
-    <button type="button" class="primary" onclick="finishOS('${escA2(o.id)}')">✓ FINALIZAR</button>
-    <button type="button" class="secondary a2-delete-os" onclick="a2DeleteOS('${escA2(o.id)}')">🗑 EXCLUIR</button>
-  </div>
-  <div class="a2-os-command-stack">
-    <button type="button" class="secondary" onclick="generateOSPDF('${escA2(o.id)}')">👁 VISUALIZAR PDF</button>
+  <div class="a2-os-command-grid">
+    <button type="button" class="secondary a2-os-action" onclick="saveOSOnly('${escA2(o.id)}')">SALVAR ALTERAÇÕES</button>
+    <button type="button" class="secondary a2-os-action" onclick="startOSService('${escA2(o.id)}')">INICIAR</button>
+    <button type="button" class="secondary a2-os-action" onclick="finishOS('${escA2(o.id)}')">FINALIZAR</button>
+    <button type="button" class="secondary a2-os-action" onclick="generateOSPDF('${escA2(o.id)}')">VISUALIZAR PDF</button>
   </div>
 </div>`;
     document.getElementById('fields').innerHTML=fields;
