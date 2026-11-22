@@ -1217,6 +1217,19 @@ function resetHistoryFilters(){
 function renderHistory(){
  const root=document.getElementById('historyList');if(!root)return;
  const $=id=>document.getElementById(id);
+ const norm=v=>String(v??'').trim().toLocaleLowerCase('pt-BR');
+ const sameId=(a,b)=>a!==undefined&&a!==null&&b!==undefined&&b!==null&&String(a)===String(b);
+ const findClient=id=>clients.find(c=>sameId(c.id,id));
+ const findVehicle=id=>vehicles.find(v=>sameId(v.id,id));
+ const clientFor=(record)=>{
+  const c=findClient(record.clientId??record.customerId??record.client_id);
+  return c?.name||record.clientName||record.customerName||record.client||record.name||'Cliente não identificado';
+ };
+ const vehicleFor=(record)=>{
+  const v=findVehicle(record.vehicleId??record.carId??record.vehicle_id);
+  if(v)return [v.brand,v.model].filter(Boolean).join(' ')+(v.plate?' • '+v.plate:'');
+  return record.vehicleName||record.carName||record.vehicle||record.car||'Veículo não identificado';
+ };
  const parseDay=value=>{
   if(!value)return '';
   const raw=String(value).trim();
@@ -1228,34 +1241,32 @@ function renderHistory(){
   return a2DayKey(d);
  };
  const dayDate=key=>key?new Date(Number(key.slice(0,4)),Number(key.slice(5,7))-1,Number(key.slice(8,10))):null;
- const entries=[],seenHistory=new Set();
- // Registros manuais/legados permanecem. OS antigas são reconstruídas pela coleção orders para evitar duplicação.
+ const entries=[];
  (Array.isArray(history)?history:[]).forEach((h,i)=>{
   if(h?.type==='OS'&&h.ref)return;
-  const client=String(h.client||'').trim(),vehicle=String(h.vehicle||'').trim();
-  entries.push({key:'hist-'+(h.id||i),type:h.type||'Atendimento',client,vehicle,clientKey:client.toLocaleLowerCase(),vehicleKey:vehicle.toLocaleLowerCase(),service:h.service||'',date:h.date||h.created,status:h.status||'Registrado',value:h.value,search:[client,vehicle,h.service,h.status,h.type].join(' ').toLocaleLowerCase()});
+  const client=String(h.client||h.clientName||'').trim(),vehicle=String(h.vehicle||h.car||'').trim();
+  entries.push({key:'hist-'+(h.id||i),type:h.type||'Atendimento',client,vehicle,service:h.service||'',date:h.date||h.created||h.createdAt,status:h.status||'Registrado',value:h.value,search:[client,vehicle,h.plate,h.service,h.status,h.type].join(' ').toLocaleLowerCase('pt-BR')});
  });
- (Array.isArray(orders)?orders:[]).forEach(o=>{
-  const client=clientName(o.clientId)||'Cliente não identificado',vehicle=vehicleLabel(o.vehicleId)||'Veículo não identificado';
-  entries.push({key:'os-'+o.id,type:'Ordem de serviço',client,vehicle,clientKey:client.toLocaleLowerCase(),vehicleKey:vehicle.toLocaleLowerCase(),service:o.service||'',date:o.completedAt||o.created||o.createdAt||o.date,status:o.status||'Registrada',value:o.totalValue??o.value,search:[client,vehicle,o.service,o.status,'ordem de serviço os'].join(' ').toLocaleLowerCase()});
+ (Array.isArray(orders)?orders:[]).forEach((o,i)=>{
+  const client=String(clientFor(o)).trim(),vehicle=String(vehicleFor(o)).trim();
+  entries.push({key:'os-'+(o.id??i),type:'Ordem de serviço',client,vehicle,service:o.service||o.services?.map(x=>x.service).filter(Boolean).join(' + ')||'',date:o.completedAt||o.created||o.createdAt||o.date||o.updatedAt,status:o.status||'Registrada',value:o.totalValue??o.value,search:[client,vehicle,o.plate,o.service,o.status,'ordem de serviço os'].join(' ').toLocaleLowerCase('pt-BR')});
  });
- (Array.isArray(budgets)?budgets:[]).forEach(b=>{
-  const rows=rowsForBudget(b),client=String(b.name||clientName(b.clientId)||'Cliente não identificado').trim(),vehicle=String(b.car||(b.vehicleId?vehicleLabel(b.vehicleId):'')||'Veículo não identificado').trim();
-  const service=rows.map(x=>x.service||services.find(v=>String(v.id)===String(x.serviceId))?.name||'').filter(Boolean).join(' + ')||b.service||'Serviço orçado';
-  entries.push({key:'budget-'+b.id,type:'Orçamento',client,vehicle,clientKey:client.toLocaleLowerCase(),vehicleKey:vehicle.toLocaleLowerCase(),service,date:b.created||b.date||b.createdAt,status:b.status||'Aberto',value:b.totalValue??b.value,search:[client,vehicle,service,b.status,'orçamento'].join(' ').toLocaleLowerCase()});
+ (Array.isArray(budgets)?budgets:[]).forEach((b,i)=>{
+  const rows=rowsForBudget(b),client=String(clientFor(b)).trim(),vehicle=String(vehicleFor(b)).trim();
+  const service=rows.map(x=>x.service||services.find(v=>sameId(v.id,x.serviceId))?.name||'').filter(Boolean).join(' + ')||b.service||'Serviço orçado';
+  entries.push({key:'budget-'+(b.id??i),type:'Orçamento',client,vehicle,service,date:b.created||b.date||b.createdAt||b.updatedAt,status:b.status||'Aberto',value:b.totalValue??b.value,search:[client,vehicle,b.plate,service,b.status,'orçamento'].join(' ').toLocaleLowerCase('pt-BR')});
  });
  const unique=Array.from(new Map(entries.map(e=>[e.key,e])).values());
  const clientEl=$('historyClient'),vehicleEl=$('historyVehicle');
  const prevClient=clientEl?.value||'',prevVehicle=vehicleEl?.value||'';
  const clientsList=[...new Set(unique.map(e=>e.client).filter(x=>x&&x!=='Cliente não identificado'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
- const vehiclesList=[...new Set(unique.filter(e=>!prevClient||e.client===prevClient).map(e=>e.vehicle).filter(x=>x&&x!=='Veículo não identificado'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
  if(clientEl)clientEl.innerHTML='<option value="">Todos os clientes</option>'+clientsList.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
  if(clientEl&&clientsList.includes(prevClient))clientEl.value=prevClient;
  const activeClient=clientEl?.value||'';
  const availableVehicles=[...new Set(unique.filter(e=>!activeClient||e.client===activeClient).map(e=>e.vehicle).filter(x=>x&&x!=='Veículo não identificado'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
  if(vehicleEl)vehicleEl.innerHTML='<option value="">Todos os veículos</option>'+availableVehicles.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
  if(vehicleEl&&availableVehicles.includes(prevVehicle))vehicleEl.value=prevVehicle;
- const q=($('historySearch')?.value||'').trim().toLocaleLowerCase(),period=$('historyPeriod')?.value||'all';
+ const q=($('historySearch')?.value||'').trim().toLocaleLowerCase('pt-BR'),period=$('historyPeriod')?.value||'all';
  const custom=$('historyCustomDates');if(custom)custom.style.display=period==='custom'?'grid':'none';
  const today=new Date();today.setHours(0,0,0,0);
  let from=null,to=new Date(today);
@@ -1271,7 +1282,7 @@ function renderHistory(){
   if(q&&!e.search.includes(q))return false;
   if(selectedClient&&e.client!==selectedClient)return false;
   if(selectedVehicle&&e.vehicle!==selectedVehicle)return false;
-  const key=parseDay(e.date),d=dayDate(key);
+  const d=dayDate(parseDay(e.date));
   if(period!=='all'&&!d)return false;
   if(from&&d<from)return false;
   if(to&&d>to)return false;
