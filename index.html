@@ -1531,7 +1531,7 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
     });
     document.getElementById('serviceList').innerHTML=list.length?list.map(s=>{
       const p=svcPrices2(s);
-      return `<div class="item"><div onclick="showService('${s.id}')"><h3>${esc(s.name)}</h3><p>${esc((s.vehicleCategories||A2_VEHICLE_CATS).join(' • '))}<br>Hatch / Sedan: ${money(p['Hatch / Sedan'])} • SUV / Caminhonete: ${money(p['SUV / Caminhonete'])}</p></div><div class="item-actions"><button class="mini" onclick="showService('${s.id}')">Ver</button><button class="mini" onclick="openForm('servico','${s.id}')">Editar</button></div></div>`;
+      return `<div class="item"><div onclick="showService('${s.id}')"><h3>${esc(s.name)}</h3><p>${esc((s.vehicleCategories||A2_VEHICLE_CATS).join(' • '))}<br>Hatch / Sedan: ${money(p['Hatch / Sedan'])} • SUV / Caminhonete: ${money(p['SUV / Caminhonete'])}</p></div><div class="item-actions"><button class="mini" onclick="showService('${s.id}')">Ver</button><button class="mini" onclick="openForm('servico','${s.id}')">Editar</button><button class="mini" onclick="deleteService('${s.id}')">Excluir</button></div></div>`;
     }).join(''):'<div class="empty">Nenhum serviço cadastrado para esta categoria.</div>';
   };
 
