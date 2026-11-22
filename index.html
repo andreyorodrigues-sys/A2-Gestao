@@ -2315,6 +2315,130 @@ window.a2V9Ready=true;
 
 
 
+
+<script type="application/x-a2-deferred">
+/* A2_REPORTS_FILTERS_PDF_V1 — filtros gerenciais e exportação PDF; somente leitura */
+(function(){
+'use strict';
+const section=document.getElementById('relatorios');
+if(!section)return;
+const escHtml=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const norm=v=>String(v??'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const dateValue=o=>{
+ const candidates=[o?.completedAt,o?.completedDate,o?.finishedAt,o?.createdAt,o?.created,o?.date,o?.openedAt];
+ for(const raw of candidates){if(!raw)continue;const s=String(raw).trim();let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);const d=new Date(raw);if(!Number.isNaN(d.getTime()))return d;}
+ return null;
+};
+const keyDate=d=>d?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):'';
+const isDone=o=>['concluida','concluido','finalizada','finalizado','completed'].includes(norm(o?.status));
+const amount=o=>{const n=Number(o?.totalValue??o?.value??0);return Number.isFinite(n)?n:0};
+const clientLabel=o=>clients.find(c=>String(c.id)===String(o?.clientId))?.name||o?.clientName||o?.name||'Cliente não identificado';
+const vehicleLabelReport=o=>{const v=vehicles.find(x=>String(x.id)===String(o?.vehicleId));return v?(typeof vehicleLabel==='function'?vehicleLabel(v.id):[v.brand,v.model,v.plate].filter(Boolean).join(' ')):(o?.car||o?.vehicle||'Veículo não identificado')};
+const serviceItems=o=>Array.isArray(o?.services)&&o.services.length?o.services:[{service:o?.service||'Serviço não informado',value:amount(o)}];
+const moneyReport=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const today=()=>keyDate(new Date());
+section.innerHTML=`
+ <h1>Relatórios</h1><div class="sub">Acompanhe resultados, operação e desempenho da A2.</div>
+ <div class="a2-enhance" id="a2ReportFilters">
+  <h3>Filtros do relatório</h3>
+  <div class="a2-grid">
+   <label>Período<select id="a2RepPeriod"><option value="month">Este mês</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="year">Este ano</option><option value="all">Todo o período</option><option value="custom">Personalizado</option></select></label>
+   <label>Tipo de relatório<select id="a2RepType"><option value="all">Visão geral</option><option value="finance">Financeiro</option><option value="services">Serviços</option><option value="clients">Clientes</option><option value="commercial">Comercial</option><option value="operations">Operacional</option></select></label>
+   <label>Data inicial<input id="a2RepStart" type="date"></label>
+   <label>Data final<input id="a2RepEnd" type="date"></label>
+   <label>Cliente<select id="a2RepClient"><option value="">Todos os clientes</option></select></label>
+   <label>Veículo<select id="a2RepVehicle"><option value="">Todos os veículos</option></select></label>
+   <label>Serviço<select id="a2RepService"><option value="">Todos os serviços</option></select></label>
+   <label>Situação da OS<select id="a2RepStatus"><option value="">Todas as situações</option><option value="done">Concluídas</option><option value="open">Em andamento / abertas</option><option value="cancel">Canceladas</option></select></label>
+  </div>
+  <div class="a2-actions"><button class="primary" type="button" onclick="a2ApplyReports()">APLICAR FILTROS</button><button class="secondary" type="button" onclick="a2ResetReports()">LIMPAR FILTROS</button></div>
+ </div>
+ <div id="a2ReportOutput" aria-live="polite"></div>
+ <div id="a2ReportPrint" style="display:none"></div>
+ <div class="a2-actions"><button class="primary" type="button" onclick="a2ExportReportsPDF()">📄 GERAR / SALVAR PDF</button></div>
+ <p class="smallnote">O PDF respeita os filtros aplicados. No iPhone, escolha “Salvar em Arquivos” na tela de impressão/compartilhamento, quando disponível.</p>
+`;
+const style=document.createElement('style');
+style.textContent=`
+#a2ReportFilters{margin-top:12px}#a2ReportFilters .a2-grid{grid-template-columns:1fr 1fr;gap:8px}#a2ReportFilters label{font-size:11px;color:var(--muted)}#a2ReportFilters input,#a2ReportFilters select{width:100%;min-width:0;height:42px;margin-top:5px;padding:8px;background:#0f1216;color:var(--text);border:1px solid var(--line);border-radius:9px;font-size:12px}#a2ReportOutput .a2-report-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}#a2ReportOutput .a2-report-kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}#a2ReportOutput .a2-report-kpi small{display:block;color:var(--muted);font-size:10px}#a2ReportOutput .a2-report-kpi b{display:block;font-size:18px;margin-top:5px;overflow-wrap:anywhere}#a2ReportOutput .a2-enhance{margin-top:10px}#a2ReportOutput .a2-table{font-size:11px;display:table;width:100%;table-layout:auto}#a2ReportOutput .a2-table th,#a2ReportOutput .a2-table td{padding:7px 4px;overflow-wrap:anywhere}#a2ReportOutput .a2-table td:last-child{text-align:right}#a2ReportOutput .a2-table th:last-child{text-align:right}@media(max-width:360px){#a2ReportFilters .a2-grid{grid-template-columns:1fr}#a2ReportOutput .a2-report-kpi b{font-size:16px}}
+@media print{body.a2-print-report *{visibility:hidden!important}body.a2-print-report #a2ReportPrint,body.a2-print-report #a2ReportPrint *{visibility:visible!important}body.a2-print-report #a2ReportPrint{display:block!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;padding:18px!important;background:#fff!important;color:#171717!important;font-family:Arial,sans-serif!important}body.a2-print-report #a2ReportPrint h1{font-size:22px;margin:0 0 4px;color:#111}body.a2-print-report #a2ReportPrint h2{font-size:14px;margin:18px 0 7px;border-bottom:1px solid #ddd;padding-bottom:5px}body.a2-print-report #a2ReportPrint .print-meta{font-size:10px;color:#555;margin:5px 0 12px}body.a2-print-report #a2ReportPrint .print-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}body.a2-print-report #a2ReportPrint .print-kpi{border:1px solid #ddd;border-radius:6px;padding:9px}body.a2-print-report #a2ReportPrint .print-kpi small{display:block;color:#555;font-size:9px}body.a2-print-report #a2ReportPrint .print-kpi b{display:block;font-size:15px;margin-top:4px}body.a2-print-report #a2ReportPrint table{width:100%;border-collapse:collapse;font-size:9px}body.a2-print-report #a2ReportPrint th,body.a2-print-report #a2ReportPrint td{border-bottom:1px solid #ddd;padding:6px 4px;text-align:left}body.a2-print-report #a2ReportPrint th:last-child,body.a2-print-report #a2ReportPrint td:last-child{text-align:right}body.a2-print-report #a2ReportPrint .print-brand{font-weight:800;color:#e8751b;letter-spacing:1px;font-size:11px;margin-bottom:8px}body.a2-print-report #a2ReportPrint .print-foot{margin-top:20px;padding-top:8px;border-top:2px solid #e8751b;font-size:9px;color:#555}body.a2-print-report .nav{display:none!important}}
+`;
+document.head.appendChild(style);
+function populate(){
+ const fill=(id,items,label)=>{const el=document.getElementById(id);if(!el)return;const old=el.value;el.innerHTML='<option value="">'+label+'</option>'+items.map(x=>'<option value="'+escHtml(x.value)+'">'+escHtml(x.label)+'</option>').join('');if([...el.options].some(o=>o.value===old))el.value=old};
+ fill('a2RepClient',clients.map(c=>({value:c.id,label:c.name||'Cliente'})),'Todos os clientes');
+ fill('a2RepVehicle',vehicles.map(v=>({value:v.id,label:(typeof vehicleLabel==='function'?vehicleLabel(v.id):[v.brand,v.model,v.plate].filter(Boolean).join(' '))||'Veículo'})),'Todos os veículos');
+ const allServices=[...new Set([...services.map(s=>s.name),...orders.flatMap(o=>serviceItems(o).map(x=>x.service))].filter(Boolean))].sort();
+ fill('a2RepService',allServices.map(s=>({value:s,label:s})),'Todos os serviços');
+}
+function selectedRange(){
+ const period=document.getElementById('a2RepPeriod').value,now=new Date();let start='',end=today();
+ if(period==='month'){start=keyDate(new Date(now.getFullYear(),now.getMonth(),1))}
+ else if(period==='year'){start=keyDate(new Date(now.getFullYear(),0,1))}
+ else if(['7','30','90'].includes(period)){const d=new Date(now);d.setDate(d.getDate()-(Number(period)-1));start=keyDate(d)}
+ else if(period==='custom'){start=document.getElementById('a2RepStart').value;end=document.getElementById('a2RepEnd').value}
+ else if(period==='all'){start='';end=''}
+ if(period!=='custom'&&period!=='all'){document.getElementById('a2RepStart').value=start;document.getElementById('a2RepEnd').value=end}
+ return {start,end};
+}
+function calculate(){
+ const {start,end}=selectedRange(),client=document.getElementById('a2RepClient').value,vehicle=document.getElementById('a2RepVehicle').value,service=document.getElementById('a2RepService').value,status=document.getElementById('a2RepStatus').value,type=document.getElementById('a2RepType').value;
+ let rows=orders.filter(o=>{
+  const d=dateValue(o),k=keyDate(d);if((start&&(!k||k<start))||(end&&(!k||k>end)))return false;
+  if(client&&String(o.clientId)!==String(client))return false;
+  if(vehicle&&String(o.vehicleId)!==String(vehicle))return false;
+  if(status==='done'&&!isDone(o))return false;
+  if(status==='open'&&(isDone(o)||norm(o.status).includes('cancel')))return false;
+  if(status==='cancel'&&!norm(o.status).includes('cancel'))return false;
+  if(service&&!serviceItems(o).some(x=>norm(x.service)===norm(service)))return false;
+  return true;
+ });
+ const completed=rows.filter(isDone),revenue=completed.reduce((s,o)=>s+amount(o),0),ticket=completed.length?revenue/completed.length:0;
+ const serviceMap=new Map(),clientMap=new Map(),monthMap=new Map();
+ completed.forEach(o=>{
+  const parts=serviceItems(o);parts.forEach(p=>{const n=p.service||'Serviço não informado',v=Number(p.value??p.totalValue??0)||0;const old=serviceMap.get(n)||{count:0,total:0};old.count++;old.total+=v;serviceMap.set(n,old)});
+  const cn=clientLabel(o),co=clientMap.get(cn)||{count:0,total:0};co.count++;co.total+=amount(o);clientMap.set(cn,co);
+  const d=dateValue(o),m=d?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'):'Sem data';monthMap.set(m,(monthMap.get(m)||0)+amount(o));
+ });
+ const approved=budgets.filter(b=>norm(b.status).includes('aprov')||b.orderId),rejected=budgets.filter(b=>norm(b.status).includes('recus')||norm(b.status).includes('rejeit')),openBudgets=budgets.filter(b=>!approved.includes(b)&&!rejected.includes(b));
+ const budgetTotal=approved.length+rejected.length+openBudgets.length,conversion=budgetTotal?approved.length/budgetTotal*100:0;
+ return {rows,completed,revenue,ticket,serviceMap,clientMap,monthMap,approved,rejected,openBudgets,conversion,range:{start,end},filters:{client,vehicle,service,status,type}};
+}
+function tableRows(map,kind){
+ const arr=[...map.entries()].sort((a,b)=>b[1].total-a[1].total);
+ if(!arr.length)return '<tr><td colspan="3">Sem registros para os filtros selecionados.</td></tr>';
+ return arr.map(([n,v])=>'<tr><td>'+escHtml(n)+'</td><td>'+v.count+'</td><td>'+moneyReport(v.total)+'</td></tr>').join('');
+}
+function render(){
+ populate();const d=calculate(),out=document.getElementById('a2ReportOutput'),type=d.filters.type;
+ const kpis='<div class="a2-report-kpis"><div class="a2-report-kpi"><small>Faturamento concluído</small><b>'+moneyReport(d.revenue)+'</b></div><div class="a2-report-kpi"><small>OS concluídas</small><b>'+d.completed.length+'</b></div><div class="a2-report-kpi"><small>Ticket médio</small><b>'+moneyReport(d.ticket)+'</b></div><div class="a2-report-kpi"><small>OS no filtro</small><b>'+d.rows.length+'</b></div></div>';
+ const service='<div class="a2-enhance"><h3>Desempenho por serviço</h3><table class="a2-table"><thead><tr><th>Serviço</th><th>Qtd.</th><th>Valor</th></tr></thead><tbody>'+tableRows(d.serviceMap)+'</tbody></table></div>';
+ const client='<div class="a2-enhance"><h3>Clientes atendidos</h3><table class="a2-table"><thead><tr><th>Cliente</th><th>OS</th><th>Valor</th></tr></thead><tbody>'+tableRows(d.clientMap)+'</tbody></table></div>';
+ const commercial='<div class="a2-enhance"><h3>Desempenho comercial</h3><p>Orçamentos aprovados/vinculados: <b>'+d.approved.length+'</b></p><p>Orçamentos recusados: <b>'+d.rejected.length+'</b></p><p>Orçamentos em aberto / sem classificação: <b>'+d.openBudgets.length+'</b></p><p>Conversão aproximada: <b>'+d.conversion.toFixed(1).replace('.',',')+'%</b></p><p class="smallnote">A conversão considera o status atual dos orçamentos cadastrados; não representa necessariamente apenas os orçamentos criados no período filtrado.</p></div>';
+ const operations='<div class="a2-enhance"><h3>Resumo operacional</h3><p>OS concluídas: <b>'+d.completed.length+'</b></p><p>OS em andamento/abertas: <b>'+d.rows.filter(o=>!isDone(o)&&!norm(o.status).includes('cancel')).length+'</b></p><p>OS canceladas: <b>'+d.rows.filter(o=>norm(o.status).includes('cancel')).length+'</b></p></div>';
+ const monthRows=[...d.monthMap.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([m,v])=>'<tr><td>'+escHtml(m)+'</td><td>'+moneyReport(v)+'</td></tr>').join('')||'<tr><td colspan="2">Sem dados.</td></tr>';
+ const monthly='<div class="a2-enhance"><h3>Faturamento por mês</h3><table class="a2-table"><thead><tr><th>Mês</th><th>Faturamento</th></tr></thead><tbody>'+monthRows+'</tbody></table></div>';
+ out.innerHTML=kpis+((type==='all'||type==='finance')?monthly:'')+((type==='all'||type==='services')?service:'')+((type==='all'||type==='clients')?client:'')+((type==='all'||type==='commercial')?commercial:'')+((type==='all'||type==='operations')?operations:'')+((type==='finance')?'<div class="a2-enhance"><h3>Observação financeira</h3><p>Faturamento considera somente OS concluídas. Recebimentos, contas a receber e despesas não são somados aqui para evitar confundir faturamento com dinheiro efetivamente recebido ou lucro.</p></div>':'');
+ window.a2CurrentReportData=d;buildPrint(d);
+}
+function buildPrint(d){
+ const el=document.getElementById('a2ReportPrint');if(!el)return;
+ const filterText=['Período: '+(d.range.start||'Todo o período')+' até '+(d.range.end||'sem limite'), 'Cliente: '+(d.filters.client?clientLabel({clientId:d.filters.client}):'Todos'), 'Veículo: '+(d.filters.vehicle?vehicleLabelReport({vehicleId:d.filters.vehicle}):'Todos'), 'Serviço: '+(d.filters.service||'Todos'), 'Situação: '+(d.filters.status||'Todas')].join(' • ');
+ const rows=d.completed.map(o=>'<tr><td>'+escHtml(dateValue(o)?.toLocaleDateString('pt-BR')||'')+'</td><td>'+escHtml(clientLabel(o))+'</td><td>'+escHtml(vehicleLabelReport(o))+'</td><td>'+escHtml(o.service||serviceItems(o).map(x=>x.service).join(', '))+'</td><td>'+moneyReport(amount(o))+'</td></tr>').join('')||'<tr><td colspan="5">Nenhum serviço concluído no período selecionado.</td></tr>';
+ const makeTable=(title,map)=>'<h2>'+title+'</h2><table><thead><tr><th>Descrição</th><th>Quantidade</th><th>Faturamento</th></tr></thead><tbody>'+tableRows(map)+'</tbody></table>';
+ el.innerHTML='<div class="print-brand">A2 ESTÉTICA AUTOMOTIVA • A2 GESTÃO</div><h1>Relatório gerencial</h1><div class="print-meta">'+escHtml(filterText)+'<br>Gerado em '+new Date().toLocaleString('pt-BR')+'</div><div class="print-kpis"><div class="print-kpi"><small>Faturamento concluído</small><b>'+moneyReport(d.revenue)+'</b></div><div class="print-kpi"><small>OS concluídas</small><b>'+d.completed.length+'</b></div><div class="print-kpi"><small>Ticket médio</small><b>'+moneyReport(d.ticket)+'</b></div><div class="print-kpi"><small>OS no filtro</small><b>'+d.rows.length+'</b></div></div>'+makeTable('Serviços',d.serviceMap)+makeTable('Clientes',d.clientMap)+'<h2>Ordens de serviço concluídas</h2><table><thead><tr><th>Data</th><th>Cliente</th><th>Veículo</th><th>Serviço</th><th>Valor</th></tr></thead><tbody>'+rows+'</tbody></table><h2>Comercial</h2><p>Orçamentos aprovados/vinculados: '+d.approved.length+' • Recusados: '+d.rejected.length+' • Em aberto/sem classificação: '+d.openBudgets.length+' • Conversão aproximada: '+d.conversion.toFixed(1)+'%</p><div class="print-foot">Não é só estética, é experiência. • Documento gerado pelo A2 Gestão.</div>';
+}
+window.a2ApplyReports=render;
+window.a2ResetReports=function(){['a2RepClient','a2RepVehicle','a2RepService','a2RepStatus'].forEach(id=>document.getElementById(id).value='');document.getElementById('a2RepPeriod').value='month';document.getElementById('a2RepType').value='all';document.getElementById('a2RepStart').value='';document.getElementById('a2RepEnd').value='';render()};
+window.a2ExportReportsPDF=function(){if(!window.a2CurrentReportData)render();document.body.classList.add('a2-print-report');const cleanup=()=>document.body.classList.remove('a2-print-report');window.addEventListener('afterprint',cleanup,{once:true});setTimeout(()=>{window.print();setTimeout(cleanup,1500)},100)};
+window.renderReports=render;
+document.getElementById('a2RepPeriod').addEventListener('change',()=>{const p=document.getElementById('a2RepPeriod').value;const custom=p==='custom';document.getElementById('a2RepStart').disabled=!custom;document.getElementById('a2RepEnd').disabled=!custom;render()});
+['a2RepType','a2RepClient','a2RepVehicle','a2RepService','a2RepStatus','a2RepStart','a2RepEnd'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+document.getElementById('a2RepStart').disabled=true;document.getElementById('a2RepEnd').disabled=true;
+populate();render();
+})();
+</script>
+
 </body></html>`;
     popup.document.open();
     popup.document.write(html);
