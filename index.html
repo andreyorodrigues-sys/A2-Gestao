@@ -1252,7 +1252,7 @@ function renderHistory(){
   entries.push({key:'os-'+(o.id??i),type:'Ordem de serviço',client,vehicle,service:o.service||o.services?.map(x=>x.service).filter(Boolean).join(' + ')||'',date:o.completedAt||o.created||o.createdAt||o.date||o.updatedAt,status:o.status||'Registrada',value:o.totalValue??o.value,search:[client,vehicle,o.plate,o.service,o.status,'ordem de serviço os'].join(' ').toLocaleLowerCase('pt-BR')});
  });
  (Array.isArray(budgets)?budgets:[]).forEach((b,i)=>{
-  const rows=rowsForBudget(b),client=String(clientFor(b)).trim(),vehicle=String(vehicleFor(b)).trim();
+  const rows=Array.isArray(b?.services)&&b.services.length?b.services:(b?.service?[{serviceId:b.serviceId||'',service:b.service,value:Number(b.value||0)}]:[]),client=String(clientFor(b)).trim(),vehicle=String(vehicleFor(b)).trim();
   const service=rows.map(x=>x.service||services.find(v=>sameId(v.id,x.serviceId))?.name||'').filter(Boolean).join(' + ')||b.service||'Serviço orçado';
   entries.push({key:'budget-'+(b.id??i),type:'Orçamento',client,vehicle,service,date:b.created||b.date||b.createdAt||b.updatedAt,status:b.status||'Aberto',value:b.totalValue??b.value,search:[client,vehicle,b.plate,service,b.status,'orçamento'].join(' ').toLocaleLowerCase('pt-BR')});
  });
@@ -1269,9 +1269,9 @@ function renderHistory(){
  const q=($('historySearch')?.value||'').trim().toLocaleLowerCase('pt-BR'),period=$('historyPeriod')?.value||'all';
  const custom=$('historyCustomDates');if(custom)custom.style.display=period==='custom'?'grid':'none';
  const today=new Date();today.setHours(0,0,0,0);
- let from=null,to=new Date(today);
- if(['7','30','90'].includes(period)){from=new Date(today);from.setDate(from.getDate()-Number(period)+1);}
- else if(period==='year')from=new Date(today.getFullYear(),0,1);
+ let from=null,to=null;
+ if(['7','30','90'].includes(period)){from=new Date(today);from.setDate(from.getDate()-Number(period)+1);to=new Date(today);}
+ else if(period==='year'){from=new Date(today.getFullYear(),0,1);to=new Date(today);}
  else if(period==='custom'){
   const a=parseDay($('historyStart')?.value),b=parseDay($('historyEnd')?.value);
   from=dayDate(a);to=dayDate(b)||new Date(today);
