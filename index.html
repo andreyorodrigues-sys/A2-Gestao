@@ -753,7 +753,28 @@ await (async function a2BrowserStorageBootstrap(){
 .a2-os-command-box .a2-os-action:active{background:#2a3038!important;border-color:#4a525e!important;transform:scale(.99)}
 @media(max-width:380px){.a2-os-command-box{padding:11px}.a2-os-command-grid{gap:7px}.a2-os-command-box .a2-os-action{min-height:46px!important;font-size:9.5px!important;padding:8px 5px!important}}
 </style>
-</head><body><main class="app">
+<style>
+/* Relatório de Serviços Executados: controles com dimensões iguais e PDF */
+#relatorio-servicos .a2-service-report-filters{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;align-items:stretch!important}
+#relatorio-servicos .a2-service-report-filters label{display:block!important;width:100%!important;min-width:0!important;margin:0!important}
+#relatorio-servicos .a2-service-report-filters select,
+#relatorio-servicos .a2-service-report-filters input{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:42px!important;box-sizing:border-box!important;margin-top:5px!important;padding:9px 10px!important;border:1px solid var(--line)!important;border-radius:10px!important;background:#0f1216!important;color:var(--text)!important;font-size:13px!important}
+#relatorio-servicos .a2-service-report-filters input[type=date]{-webkit-appearance:none;appearance:none}
+#relatorio-servicos .a2-service-report-filters input[type=date]::-webkit-calendar-picker-indicator{width:17px;height:17px;opacity:.75}
+body.a2-print-service-report *{visibility:hidden!important}
+body.a2-print-service-report #a2ServiceReportPrint,body.a2-print-service-report #a2ServiceReportPrint *{visibility:visible!important}
+body.a2-print-service-report #a2ServiceReportPrint{display:block!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;box-sizing:border-box!important;padding:22px!important;background:#fff!important;color:#171717!important;font-family:Arial,sans-serif!important}
+body.a2-print-service-report #a2ServiceReportPrint .print-brand{font-weight:800;color:#e8751b;letter-spacing:1px;font-size:11px;margin-bottom:8px}
+body.a2-print-service-report #a2ServiceReportPrint h1{font-size:22px;margin:0 0 8px;color:#111}
+body.a2-print-service-report #a2ServiceReportPrint .print-meta{font-size:10px;color:#555;line-height:1.6;margin:5px 0 16px}
+body.a2-print-service-report #a2ServiceReportPrint table{width:100%;border-collapse:collapse;font-size:10px}
+body.a2-print-service-report #a2ServiceReportPrint th,body.a2-print-service-report #a2ServiceReportPrint td{border-bottom:1px solid #ddd;padding:8px 5px;text-align:left;vertical-align:top}
+body.a2-print-service-report #a2ServiceReportPrint th{background:#f3f3f3}
+body.a2-print-service-report #a2ServiceReportPrint th:last-child,body.a2-print-service-report #a2ServiceReportPrint td:last-child{text-align:right;white-space:nowrap}
+body.a2-print-service-report #a2ServiceReportPrint .print-total{display:flex;justify-content:space-between;gap:12px;margin-top:16px;padding:12px 0;border-top:2px solid #222;font-size:12px}
+body.a2-print-service-report #a2ServiceReportPrint .print-foot{margin-top:24px;padding-top:9px;border-top:2px solid #e8751b;font-size:9px;color:#555}
+body.a2-print-service-report .nav{display:none!important}
+</style></head><body><main class="app">
 <header class="top"><div class="brand">A2 <span>GESTÃO</span></div><div class="avatar">A</div></header>
 <section class="view active" id="home">
 <div class="home-head"><div><div class="eyebrow">PAINEL DE COMANDO</div><h1 id="homeGreeting">Bom dia, Andrei</h1><div class="sub">Tudo o que você precisa para acompanhar a A2 hoje.</div></div></div>
@@ -1535,7 +1556,31 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
     return null;
   }
   window.isCompletedReportOrder=function(o){const status=String(o?.status||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');return ['concluida','concluido','finalizada','finalizado','completed'].includes(status)};
-  window.renderServiceReport=function(){let c=document.getElementById('rptClient')?.value||'',a=document.getElementById('rptStart')?.value||'',b=document.getElementById('rptEnd')?.value||'';let ini=a?new Date(a+'T00:00:00'):new Date('2000-01-01T00:00:00'),fim=b?new Date(b+'T23:59:59'):new Date('2999-12-31T23:59:59');let rows=orders.filter(o=>window.isCompletedReportOrder(o)&&(!c||String(o.clientId)===String(c))).filter(o=>{let d=dateOf(o);return d&&d>=ini&&d<=fim});let total=rows.reduce((x,o)=>x+Number(o.totalValue??o.value??0),0);let nome=c?clientName(c):'Todos os clientes';document.getElementById('rptResult').innerHTML=`<div class="a2-report"><b>RELATÓRIO DE SERVIÇOS EXECUTADOS</b>\nCliente: ${esc(nome)}\nPeríodo: ${esc(a||'Início')} a ${esc(b||'Hoje')}\n\n${rows.map(o=>`${o.completedAt?new Date(o.completedAt).toLocaleDateString('pt-BR'):o.created} • ${vehicleLabel(o.vehicleId)} • ${o.service} • ${money(o.totalValue??o.value)}`).join('\n')||'Nenhum serviço concluído encontrado.'}\n\nTotal de serviços: ${rows.length}\nTOTAL DO PERÍODO: ${money(total)}</div><div class="a2-actions"><button class="primary" onclick="a2CopyReport('rptResult')">Copiar relatório</button><button class="primary" onclick="a2SendReportWA()">💬 Enviar WhatsApp</button></div>`;window.a2LastReport={nome,rows,total,a,b};};
+  window.renderServiceReport=function(){
+    const c=document.getElementById('rptClient')?.value||'',a=document.getElementById('rptStart')?.value||'',b=document.getElementById('rptEnd')?.value||'';
+    const ini=a?new Date(a+'T00:00:00'):new Date('2000-01-01T00:00:00'),fim=b?new Date(b+'T23:59:59'):new Date('2999-12-31T23:59:59');
+    if(a&&b&&a>b){document.getElementById('rptResult').innerHTML='<div class="empty">A data inicial não pode ser posterior à data final.</div>';return;}
+    const rows=orders.filter(o=>window.isCompletedReportOrder(o)&&(!c||String(o.clientId)===String(c))).filter(o=>{const d=window.a2ReportDateOf(o);return d&&d>=ini&&d<=fim;});
+    const total=rows.reduce((x,o)=>x+Number(o.totalValue??o.value??0),0),nome=c?clientName(c):'Todos os clientes';
+    const startLabel=a?new Date(a+'T00:00:00').toLocaleDateString('pt-BR'):'Início',endLabel=b?new Date(b+'T00:00:00').toLocaleDateString('pt-BR'):'Hoje';
+    const details=rows.map(o=>{const d=window.a2ReportDateOf(o);return {date:d?d.toLocaleDateString('pt-BR'):'Data não informada',client:clientName(o.clientId)||nome,vehicle:vehicleLabel(o.vehicleId)||'Veículo não informado',service:o.service||(Array.isArray(o.services)?o.services.map(x=>x.service).filter(Boolean).join(', '):'Serviço não informado'),value:Number(o.totalValue??o.value??0)||0};});
+    document.getElementById('rptResult').innerHTML=`<div class="a2-report"><b>RELATÓRIO DE SERVIÇOS EXECUTADOS</b>\nCliente: ${esc(nome)}\nPeríodo: ${esc(startLabel)} a ${esc(endLabel)}\n\n${details.map(x=>`${esc(x.date)} • ${esc(x.vehicle)} • ${esc(x.service)} • ${money(x.value)}`).join('\\n')||'Nenhum serviço concluído encontrado.'}\n\nTotal de serviços: ${rows.length}\nTOTAL DO PERÍODO: ${money(total)}</div><div class="a2-actions"><button class="primary" type="button" onclick="a2CopyReport('rptResult')">Copiar relatório</button><button class="primary" type="button" onclick="a2SendReportWA()">💬 Enviar WhatsApp</button></div>`;
+    const printRows=details.map(x=>'<tr><td>'+esc(x.date)+'</td><td>'+esc(x.client)+'</td><td>'+esc(x.vehicle)+'</td><td>'+esc(x.service)+'</td><td>'+money(x.value)+'</td></tr>').join('')||'<tr><td colspan="5">Nenhum serviço concluído encontrado.</td></tr>';
+    const print=document.getElementById('a2ServiceReportPrint');
+    if(print)print.innerHTML='<div class="print-brand">A2 ESTÉTICA AUTOMOTIVA • A2 GESTÃO</div><h1>Serviços executados</h1><p class="print-meta">Cliente: '+esc(nome)+'<br>Período: '+esc(startLabel)+' a '+esc(endLabel)+'<br>Gerado em: '+new Date().toLocaleString('pt-BR')+'</p><table><thead><tr><th>Data</th><th>Cliente</th><th>Veículo</th><th>Serviço executado</th><th>Valor</th></tr></thead><tbody>'+printRows+'</tbody></table><div class="print-total"><span>Quantidade de serviços: '+rows.length+'</span><strong>Total do período: '+money(total)+'</strong></div><div class="print-foot">Não é só estética, é experiência.</div>';
+    window.a2LastReport={nome,rows,total,a,b,details};
+  };
+  window.a2ExportServiceReportPDF=function(){
+    try{
+      if(!window.a2LastReport)window.renderServiceReport();
+      const print=document.getElementById('a2ServiceReportPrint');if(!print||!print.innerHTML){alert('Gere o relatório antes de criar o PDF.');return;}
+      const cleanup=()=>document.body.classList.remove('a2-print-service-report');
+      document.body.classList.add('a2-print-service-report');
+      window.addEventListener('afterprint',cleanup,{once:true});
+      if(typeof window.print!=='function'){cleanup();alert('A opção de PDF não está disponível neste navegador. Abra o A2 Gestão pelo Safari e tente novamente.');return;}
+      window.print();
+    }catch(error){document.body.classList.remove('a2-print-service-report');console.error('Falha ao gerar PDF dos serviços executados:',error);alert('Não foi possível abrir a impressão em PDF. Tente novamente pelo Safari.');}
+  };
   window.a2CopyReport=function(id){let t=document.getElementById(id)?.innerText||'';navigator.clipboard?.writeText(t).then(()=>showToast()).catch(()=>alert(t));};
   window.a2SendReportWA=function(){let r=window.a2LastReport;if(!r)return;let phone='';if(r.nome!=='Todos os clientes'){let c=clients.find(x=>x.name===r.nome);phone=c?.phone||''}let text=document.getElementById('rptResult').innerText;let digits=(phone||'').replace(/\\D/g,'');window.open('https://wa.me/'+(digits||'')+'?text='+encodeURIComponent(text),'_blank')};
 
@@ -1556,7 +1601,7 @@ const oldHome=renderHome;window.renderHome=function(){oldHome();const h=document
 
   // Adiciona telas de relatórios ao módulo Mais.
   const mais=document.getElementById('mais');if(mais){mais.insertAdjacentHTML('beforeend',`<div class="section"><h2>Relatórios gerenciais</h2></div><div class="module-grid"><button class="module" onclick="go('relatorio-servicos')"><b>🧾</b><span>Serviços executados</span></button><button class="module" onclick="go('relatorio-financeiro')"><b>📈</b><span>Faturamento</span></button><button class="module" onclick="a2PixConfig()"><b>🔑</b><span>Chave Pix</span></button></div>`)}
-  document.querySelector('.app').insertAdjacentHTML('beforeend',`<section id="relatorio-servicos" class="view"><h1>Relatório de Serviços</h1><div class="sub">Fechamento de serviços executados para envio ao cliente.</div><div class="a2-grid"><label>Cliente<select id="rptClient"><option value="">Todos</option>${clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>Data inicial<input id="rptStart" type="date"></label><label>Data final<input id="rptEnd" type="date"></label></div><button class="primary" onclick="renderServiceReport()">Gerar relatório</button><div id="rptResult" style="margin-top:12px"></div></section><section id="relatorio-financeiro" class="view"><h1>Financeiro</h1><div class="sub">Faturamento por tipo de serviço e período.</div><div class="a2-grid"><label>Data inicial<input id="finStart" type="date"></label><label>Data final<input id="finEnd" type="date"></label></div><button class="primary" onclick="renderFinanceReport()">Gerar análise</button><div id="finReportResult" style="margin-top:12px"></div></section>`);
+  document.querySelector('.app').insertAdjacentHTML('beforeend',`<section id="relatorio-servicos" class="view"><h1>Relatório de Serviços</h1><div class="sub">Fechamento de serviços executados para envio ao cliente.</div><div class="a2-grid a2-service-report-filters"><label>Cliente<select id="rptClient"><option value="">Todos</option>${clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>Data inicial<input id="rptStart" type="date"></label><label>Data final<input id="rptEnd" type="date"></label></div><div class="a2-actions"><button class="primary" type="button" onclick="renderServiceReport()">Gerar relatório</button><button class="primary" type="button" onclick="a2ExportServiceReportPDF()">📄 Gerar PDF</button></div><div id="rptResult" style="margin-top:12px"></div><div id="a2ServiceReportPrint" style="display:none"></div></section><section id="relatorio-financeiro" class="view"><h1>Financeiro</h1><div class="sub">Faturamento por tipo de serviço e período.</div><div class="a2-grid"><label>Data inicial<input id="finStart" type="date"></label><label>Data final<input id="finEnd" type="date"></label></div><button class="primary" onclick="renderFinanceReport()">Gerar análise</button><div id="finReportResult" style="margin-top:12px"></div></section>`);
   window.a2PixConfig=pixButton;
   // Navegação para telas adicionadas.
   const oldRefresh=refresh;window.refresh=function(id){oldRefresh(id);if(id==='relatorio-servicos'){document.getElementById('rptClient').innerHTML='<option value="">Todos</option>'+clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}if(id==='relatorio-financeiro')renderFinanceReport();};
