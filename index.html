@@ -2637,9 +2637,11 @@ window.a2V9Ready=true;
       visibility:'visible',overflow:'visible'
     });
     wrap.innerHTML=pdfHTML(o);
+    const target=wrap.firstElementChild;
+    target.classList.add('a2pf-export-page');
     const exportStyle=document.createElement('style');
     exportStyle.textContent=`
-      .a2pf-export .a2pf-page{
+      .a2pf-export-page{
         display:block!important;position:relative!important;float:none!important;
         transform:none!important;transform-origin:top left!important;
         margin:0!important;width:794px!important;min-width:794px!important;
@@ -2647,22 +2649,21 @@ window.a2V9Ready=true;
         padding:30px 38px 34px!important;overflow:visible!important;
         background:#fff!important;color:#111!important;box-sizing:border-box!important
       }
-      .a2pf-export .a2pf-head{transform:none!important;min-width:0!important}
-      .a2pf-export .a2pf-logo{display:flex!important;width:145px!important;height:72px!important;max-width:145px!important;overflow:hidden!important}
-      .a2pf-export .a2pf-logo img{display:block!important;width:118px!important;height:auto!important;max-width:118px!important;max-height:72px!important;min-width:0!important;object-fit:contain!important}
-      .a2pf-export img{max-width:100%;height:auto}
-      .a2pf-export .a2pf-photos img{width:100%!important;height:150px!important;max-width:100%!important;object-fit:cover!important}
-      .a2pf-export .a2pf-head,.a2pf-export .a2pf-company-block,.a2pf-export .a2pf-docline,
-      .a2pf-export .a2pf-grid>div,.a2pf-export .a2pf-services tr,
-      .a2pf-export .a2pf-check,.a2pf-export .a2pf-photos img,
-      .a2pf-export .a2pf-signature,.a2pf-export .a2pf-footer{
+      .a2pf-export-page .a2pf-head{transform:none!important;min-width:0!important}
+      .a2pf-export-page .a2pf-logo{display:flex!important;width:145px!important;height:72px!important;max-width:145px!important;overflow:hidden!important}
+      .a2pf-export-page .a2pf-logo img{display:block!important;width:118px!important;height:auto!important;max-width:118px!important;max-height:72px!important;min-width:0!important;object-fit:contain!important}
+      .a2pf-export-page img{max-width:100%;height:auto}
+      .a2pf-export-page .a2pf-photos img{width:100%!important;height:150px!important;max-width:100%!important;object-fit:cover!important}
+      .a2pf-export-page .a2pf-head,.a2pf-export-page .a2pf-company-block,.a2pf-export-page .a2pf-docline,
+      .a2pf-export-page .a2pf-grid>div,.a2pf-export-page .a2pf-services tr,
+      .a2pf-export-page .a2pf-check,.a2pf-export-page .a2pf-photos img,
+      .a2pf-export-page .a2pf-signature,.a2pf-export-page .a2pf-footer{
         break-inside:avoid!important;page-break-inside:avoid!important
       }
-      .a2pf-export .a2pf-photos{break-inside:auto!important;page-break-inside:auto!important}
+      .a2pf-export-page .a2pf-photos{break-inside:auto!important;page-break-inside:auto!important}
     `;
-    wrap.appendChild(exportStyle);
+    document.head.appendChild(exportStyle);
     document.body.appendChild(wrap);
-    const target=wrap.firstElementChild;
     try{
       const imgs=Array.from(target.querySelectorAll('img'));
       await Promise.all(imgs.map(img=>new Promise(resolve=>{
@@ -2681,7 +2682,7 @@ window.a2V9Ready=true;
           scrollX:0,scrollY:0,useCORS:true,allowTaint:true,
           backgroundColor:'#fff',logging:false,
           onclone:function(doc){
-            const page=doc.querySelector('.a2pf-export .a2pf-page');
+            const page=doc.querySelector('.a2pf-export-page');
             if(page){
               page.style.setProperty('transform','none','important');
               page.style.setProperty('width','794px','important');
@@ -2691,7 +2692,7 @@ window.a2V9Ready=true;
               page.style.setProperty('height','auto','important');
               page.style.setProperty('margin','0','important');
             }
-            doc.querySelectorAll('.a2pf-export .a2pf-logo img').forEach(img=>{
+            doc.querySelectorAll('.a2pf-export-page .a2pf-logo img').forEach(img=>{
               img.style.setProperty('width','118px','important');
               img.style.setProperty('height','auto','important');
               img.style.setProperty('max-width','118px','important');
@@ -2702,7 +2703,7 @@ window.a2V9Ready=true;
         jsPDF:{unit:'pt',format:'a4',orientation:'portrait',compress:true},
         pagebreak:{mode:['css','legacy'],avoid:['.a2pf-head','.a2pf-company-block','.a2pf-docline','.a2pf-grid>div','.a2pf-services tr','.a2pf-check','.a2pf-photos img','.a2pf-signature','.a2pf-footer']}
       }).from(target).toPdf().get('pdf').then(pdf=>pdf.output('blob'));
-    }finally{wrap.remove();}
+    }finally{exportStyle.remove();wrap.remove();}
   }
 
   window.generateOSPDFAndWhatsApp=async function(id){
