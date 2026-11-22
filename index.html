@@ -3948,204 +3948,125 @@ const oldRefresh=window.refresh;if(typeof oldRefresh==='function')window.refresh
 
 </script>
 <script>
+/* A2_REPORTS_FILTERS_PDF_V1 — filtros gerenciais e exportação PDF; somente leitura */
 (function(){
 'use strict';
-if(window.a2FinanceAdvancedV1)return;window.a2FinanceAdvancedV1=true;
-const oldRender=window.renderFinance,legacyFinanceHost=document.getElementById('financeList'),fmt=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),iso=()=>new Date().toISOString().slice(0,10);let selectedMonth=iso().slice(0,7);const ym=()=>selectedMonth,dt=v=>String(v||'').slice(0,10),monthOf=v=>{let s=String(v??'').trim();if(/^\d{4}-\d{2}/.test(s))return s.slice(0,7);let br=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);return br?br[3]+'-'+br[2]:''},sum=(a,f)=>a.reduce((n,x)=>n+(Number(f(x))||0),0);
-const escx=v=>typeof esc==='function'?esc(v??''):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const acc=()=>accounts.filter(a=>a.active!==false),tx=()=>transactions,pm=()=>payments;
-function openRec(){return receivables.map(r=>{const paid=sum(pm().filter(p=>String(p.receivableId)===String(r.id)),p=>p.amount);return {r,balance:Math.max(0,Number(r.amount||0)-paid)}}).filter(x=>x.balance>.009)}
-function eligibleTx(){return tx().filter(t=>t.source!=='bank-import'||t.posted===true)}function balance(a){return Number(a.openingBalance||0)+sum(eligibleTx().filter(t=>String(t.accountId||'')===String(a.id)),t=>t.type==='expense'?-Number(t.amount||0):Number(t.amount||0))+sum(pm().filter(p=>String(p.accountId||'')===String(a.id)),p=>p.amount)}
-function addMovement(){
- let k=prompt('Tipo: receita ou despesa','despesa');if(k===null)return;let type=/^r/i.test(k.trim())?'income':'expense';
- let description=prompt('Descrição:');if(!description||!description.trim())return;
- let raw=prompt('Valor em reais:','0');if(raw===null)return;let amount=Number(raw.replace(/\./g,'').replace(',','.'));if(!(amount>0)||!Number.isFinite(amount))return alert('Valor inválido.');
- let cats=['Produtos e materiais','Estrutura','Aluguel','Água','Energia','Internet e telefone','Equipamentos e manutenção','Operacional','Combustível','Taxas financeiras','Impostos','Pró-labore / retirada','Investimentos','Outros'];
- let category=prompt('Categoria:\n'+cats.join('\n'),type==='expense'?'Produtos e materiais':'Serviços / outras receitas')||'Outros';
- let date=prompt('Data (AAAA-MM-DD):',iso());if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return alert('Data inválida.');
- let method=prompt('Forma: Pix, Dinheiro, Débito, Crédito, Transferência ou Outros','Pix')||'Outros',accountId='';
- if(acc().length){let n=Number(prompt('Conta:\n'+acc().map((a,i)=>(i+1)+'. '+a.name).join('\n')+'\n0. Não classificar','0'));if(n>0&&acc()[n-1])accountId=acc()[n-1].id;}
- tx().push({id:uid(),type,description:description.trim(),amount,date,method,category,accountId,source:'manual',createdAt:new Date().toISOString()});saveAll();window.renderFinance();
-}
-window.a2FinAddMovement=addMovement;window.a2FinSetMonth=function(v){if(/^\d{4}-\d{2}$/.test(v||'')){selectedMonth=v;window.renderFinance()}};
-window.a2FinReconcile=function(id){let t=tx().find(x=>String(x.id)===String(id));if(!t)return;t.reconciled=true;t.matchedExisting=true;t.reconciledAt=new Date().toISOString();saveAll();window.renderFinance()};window.a2FinPostImported=function(id){let t=tx().find(x=>String(x.id)===String(id)&&x.source==='bank-import');if(!t)return;if(!confirm('Registrar esta linha importada como movimentação financeira? Confirme somente se ela ainda não estiver lançada no A2.'))return;t.posted=true;t.reconciled=true;t.reconciledAt=new Date().toISOString();saveAll();window.renderFinance()};
-window.a2FinDeleteImported=function(id){let t=tx().find(x=>String(x.id)===String(id));if(!t||t.source!=='bank-import'||!confirm('Excluir esta linha importada?'))return;transactions=transactions.filter(x=>String(x.id)!==String(id));saveAll();window.renderFinance()};
-window.a2FinImportCSV=function(input){
- const file=input.files&&input.files[0];if(!file)return;const reader=new FileReader();
- reader.onload=function(){try{let lines=String(reader.result||'').replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim());if(lines.length<2)throw Error('Arquivo sem movimentações.');
- let sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':',';
- const parse=line=>{let a=[],v='',q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'&&line[i+1]==='"'){v+='"';i++}else if(c==='"')q=!q;else if(c===sep&&!q){a.push(v.trim());v=''}else v+=c}a.push(v.trim());return a};
- let h=parse(lines[0]).map(x=>x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')),idx=(keys,d)=>{for(let k of keys){let i=h.findIndex(x=>x.includes(k));if(i>=0)return i}return d};
- let di=idx(['data'],0),de=idx(['descricao','historico','lancamento'],1),va=idx(['valor','amount'],2),ty=idx(['tipo','natureza'],-1),ca=idx(['categoria'],-1),added=0,skip=0;
- lines.slice(1).forEach(line=>{let c=parse(line),d=dt(c[di]),v=Number(String(c[va]||'').replace(/[R$\s]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'));if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!Number.isFinite(v)||!v){skip++;return}
- let tr=ty>=0?String(c[ty]||'').toLowerCase():'',type=/desp|deb|saida/.test(tr)||v<0?'expense':'income';v=Math.abs(v);
- let desc=String(c[de]||'Extrato bancário').trim(),sig=[d,desc.toLowerCase(),v.toFixed(2),type].join('|');if(tx().some(t=>t.bankSignature===sig)){skip++;return}
- tx().push({id:uid(),type,description:desc,amount:v,date:d,category:ca>=0?(c[ca]||'Extrato bancário'):'Extrato bancário',source:'bank-import',bankSignature:sig,reconciled:false,createdAt:new Date().toISOString()});added++;
- });saveAll();alert('Importados: '+added+'. Ignorados/duplicados: '+skip+'. Confira cada linha antes de considerar conciliado.');window.renderFinance();
- }catch(e){alert('Erro na importação: '+e.message)}finally{input.value=''}};reader.readAsText(file,'UTF-8');
+const section=document.getElementById('relatorios');
+if(!section)return;
+const escHtml=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const norm=v=>String(v??'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const dateValue=o=>{
+ const candidates=[o?.completedAt,o?.completedDate,o?.finishedAt,o?.createdAt,o?.created,o?.date,o?.openedAt];
+ for(const raw of candidates){if(!raw)continue;const s=String(raw).trim();let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);const d=new Date(raw);if(!Number.isNaN(d.getTime()))return d;}
+ return null;
 };
-window.a2FinExportCSV=function(){let rows=[['Data','Tipo','Descrição','Categoria','Valor','Forma','Conta','Origem','Conciliado']];tx().filter(t=>monthOf(t.date)===ym()).forEach(t=>rows.push([dt(t.date),t.type,t.description||'',t.category||'',Number(t.amount||0).toFixed(2).replace('.',','),t.method||'',acc().find(a=>String(a.id)===String(t.accountId))?.name||'',t.source||'manual',t.reconciled?'Sim':'Não']));let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='A2_Financeiro_'+ym()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
-function overview(){
- let m=ym(),monthLabel=new Date(Number(m.slice(0,4)),Number(m.slice(5,7))-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),inc=sum(pm().filter(p=>monthOf(p.date)===m),p=>p.amount)+sum(eligibleTx().filter(t=>t.type==='income'&&monthOf(t.date)===m),t=>t.amount),out=sum(eligibleTx().filter(t=>t.type==='expense'&&monthOf(t.date)===m),t=>t.amount),pending=openRec().filter(x=>monthOf(x.r.dueDate||x.r.createdAt||orders.find(o=>String(o.id)===String(x.r.orderId))?.completedAt||orders.find(o=>String(o.id)===String(x.r.orderId))?.created)===m),rec=sum(pending,x=>x.balance),pay=payables.filter(p=>p.status!=='Pago'&&monthOf(p.dueDate||p.createdAt)===m),late=pay.filter(p=>dt(p.dueDate)<iso()),all=acc(),cash=sum(all,balance),future= new Date();future.setDate(future.getDate()+30);let horizon=future.toISOString().slice(0,10);
- let rec30=sum(pending.filter(x=>x.r.dueDate&&dt(x.r.dueDate)>=iso()&&dt(x.r.dueDate)<=horizon),x=>x.balance),pay30=sum(pay.filter(x=>dt(x.dueDate)>=iso()&&dt(x.dueDate)<=horizon),x=>x.amount),exp={},imports=tx().filter(t=>t.source==='bank-import'&&!t.reconciled).slice().reverse().slice(0,12);
- eligibleTx().filter(t=>t.type==='expense'&&monthOf(t.date)===m).forEach(t=>{let k=t.category||'Sem categoria';exp[k]=(exp[k]||0)+Number(t.amount||0)});
- let cat=Object.entries(exp).sort((a,b)=>b[1]-a[1]).slice(0,6),done=orders.filter(o=>o.status==='Concluída'&&monthOf(o.completedAt||o.createdAt||o.created)===m),revenue=sum(done,o=>o.totalValue??o.value),direct=0,count=0;
- done.forEach(o=>{let c=serviceCosts.find(x=>String(x.serviceId)===String(o.serviceId));if(c){let p=Number(o.totalValue??o.value??0);direct+=Number(c.materials||0)+Number(c.hours||0)*Number(c.hourlyRate||0)+Number(c.other||0)+p*Number(c.feePercent||0)/100;count++}});
- let target=Number(goals.find(g=>g.month===m)?.target||0),html='';
- const box=(label,val)=>'<div class="v7box"><small>'+label+'</small><b>'+fmt(val)+'</b></div>';
- html+='<section class="v7panel" id="a2FinOverview"><h3>Visão financeira</h3><label class="v7muted">Período de análise <input id="a2FinMonth" type="month" value="'+m+'" onchange="a2FinSetMonth(this.value)"></label><div class="v7grid">'+box('Recebido em '+monthLabel,inc)+box('Despesas em '+monthLabel,out)+box('Resultado de caixa',inc-out)+box('A receber no período',rec)+box('Contas a pagar no período',sum(pay,p=>p.amount))+box('Contas a pagar vencidas no período',sum(late,p=>p.amount))+box('A receber vencido no período',sum(pending.filter(x=>x.r.dueDate&&dt(x.r.dueDate)<iso()),x=>x.balance))+'</div><div class="v7actions"><button class="primary" onclick="a2FinAddMovement()">＋ Novo lançamento</button><button class="secondary" onclick="a2V7AddAccount()">＋ Cadastrar conta</button><button class="secondary" onclick="a2FinExportCSV()">Exportar CSV</button></div><p class="v7muted">Recebimento é dinheiro efetivamente registrado; valor de OS concluída não é automaticamente tratado como entrada de caixa.</p>'+(target?'<p>Meta mensal: <b>'+fmt(target)+'</b> • '+Math.min(100,inc/target*100).toFixed(1)+'% alcançada</p><progress max="100" value="'+Math.min(100,inc/target*100)+'"></progress>':'')+'</section>';
- html+='<section class="v7panel"><h3>Fluxo de caixa — próximos 30 dias</h3><div class="v7grid">'+box('Saldo atual classificado',cash)+box('Entradas previstas',rec30)+box('Saídas previstas',pay30)+box('Saldo projetado',cash+rec30-pay30)+'</div><p class="v7muted">A projeção usa contas com vencimento nos próximos 30 dias. Contas antigas sem conta financeira vinculada não entram no saldo individual.</p></section>';
- html+='<section class="v7panel"><h3>Contas e saldos</h3>'+(all.length?all.map(a=>'<div class="v7row"><span><b>'+escx(a.name)+'</b><small class="v7muted"> • '+escx(a.type||'Conta')+' • Inicial '+fmt(a.openingBalance)+'</small></span><b>'+fmt(balance(a))+'</b></div>').join(''):'<p class="v7muted">Cadastre Caixa, Banco e Maquininha para separar saldos.</p>')+'<p class="v7muted">Movimentações antigas sem conta vinculada ficam fora dos saldos individuais. Não há conexão bancária automática.</p></section>';
- html+='<section class="v7panel"><h3>Despesas por categoria — '+monthLabel+'</h3>'+(cat.length?cat.map(x=>'<div class="v7row"><span>'+escx(x[0])+'</span><b>'+fmt(x[1])+'</b></div>').join(''):'<p class="v7muted">Sem despesas categorizadas neste mês.</p>')+'</section>';
- html+='<section class="v7panel"><h3>Rentabilidade estimada dos serviços concluídos</h3><div class="v7grid">'+box('Valor das OS concluídas',revenue)+box('Custo direto estimado',direct)+box('Margem de contribuição estimada',revenue-direct)+'</div><p class="v7muted">'+count+' de '+done.length+' OS têm custo configurado. Estimativa não é lucro líquido; não inclui automaticamente todas as despesas fixas e impostos.</p><button class="secondary" onclick="a2V7AddCost()">Configurar custo de serviço</button></section>';
- html+='<section class="v7panel"><h3>Conciliação de extrato CSV</h3><p class="v7muted">Importe CSV com colunas Data, Descrição, Valor e, opcionalmente, Tipo e Categoria. Linhas importadas ficam pendentes para conferência manual; não há conexão bancária automática.</p><label>Importar extrato <input type="file" accept=".csv,text/csv" onchange="a2FinImportCSV(this)"></label>'+(imports.length?imports.map(t=>'<div class="v7row"><div><b>'+escx(t.description)+'</b><div class="v7muted">'+escx(t.date)+' • '+(t.type==='expense'?'Saída':'Entrada')+' • '+fmt(t.amount)+'</div></div><div class="v7bill-actions"><button class="mini" onclick="a2FinReconcile(\''+t.id+'\')">Já lançado</button><button class="mini" onclick="a2FinPostImported(\''+t.id+'\')">Registrar no caixa</button><button class="mini danger" onclick="a2FinDeleteImported(\''+t.id+'\')">Excluir</button></div></div>').join(''):'<p class="v7muted">Nenhuma linha importada aguardando conferência.</p>')+'</section>';
- return html;
-}
-const submitPay=window.a2SubmitPayment;if(typeof submitPay==='function')window.a2SubmitPayment=function(e){let id=e.target.querySelector('[name="accountId"]')?.value||'';submitPay(e);let p=payments[payments.length-1];if(p&&id){p.accountId=id;saveAll();window.renderFinance()}};
-const submitTx=window.a2SubmitTransaction;if(typeof submitTx==='function')window.a2SubmitTransaction=function(e){let id=e.target.querySelector('[name="accountId"]')?.value||'',cat=e.target.querySelector('[name="category"]')?.value||'';submitTx(e);let t=transactions[transactions.length-1];if(t){if(id)t.accountId=id;if(cat)t.category=cat;saveAll();window.renderFinance()}};
-const addPay=window.a2V7AddPayable;if(typeof addPay==='function')window.a2V7AddPayable=function(){let before=new Set(payables.map(p=>String(p.id)));addPay();let p=payables.find(x=>!before.has(String(x.id)));if(p&&acc().length){let n=Number(prompt('Vincular conta financeira:\n'+acc().map((a,i)=>(i+1)+'. '+a.name).join('\n')+'\n0. Não classificar','0'));if(n>0&&acc()[n-1]){p.accountId=acc()[n-1].id;saveAll()}}window.renderFinance()};
-const payPay=window.a2V7PayPayable;if(typeof payPay==='function')window.a2V7PayPayable=function(id){payPay(id);let p=payables.find(x=>String(x.id)===String(id));if(p){tx().filter(t=>String(t.payableId)===String(id)).forEach(t=>t.accountId=p.accountId||t.accountId||'');saveAll()}};
-window.renderFinance=function(){
- if(typeof oldRender==='function')oldRender();
- const root=document.getElementById('a2FinanceV7');if(!root)return;
- root.querySelector('#a2FinOverview')?.remove();
- root.querySelector('.v7quick')?.remove();
- root.insertAdjacentHTML('afterbegin',overview());
- const legacyGrid=Array.from(root.children).find(x=>x.classList&&x.classList.contains('v7grid'));
- if(legacyGrid)legacyGrid.style.display='none';
- Array.from(root.querySelectorAll('.v7panel')).forEach(p=>{
-  if((p.querySelector('h3')?.textContent||'').includes('Contas financeiras / caixas / maquininhas')){
-   const note=p.querySelector('.v7muted:last-child');
-   if(note)note.textContent='Os saldos por conta são calculados pelo saldo inicial mais recebimentos e movimentações vinculadas. Registros antigos sem conta ficam fora dos saldos individuais.';
-  }
- });
- const financeList=legacyFinanceHost;
- const paymentForm=document.getElementById('a2PaymentForm');
- if(paymentForm){
-  paymentForm.id='a2PaymentForm';
-  if(!paymentForm.querySelector('[name="accountId"]')){
-   const label=document.createElement('label');
-   label.innerHTML='Conta que recebeu <select name="accountId"><option value="">Não classificar</option>'+acc().map(a=>'<option value="'+escx(a.id)+'">'+escx(a.name)+'</option>').join('')+'</select>';
-   paymentForm.appendChild(label);
-  }
- }
- const expenseForm=financeList?.querySelector('form[onsubmit*="a2SubmitTransaction"]');
- if(expenseForm){
-  expenseForm.id='a2ExpenseForm';
-  if(!expenseForm.querySelector('[name="category"]')){
-   const category=document.createElement('label');
-   category.innerHTML='Categoria <select name="category"><option>Outros</option><option>Produtos e materiais</option><option>Estrutura</option><option>Aluguel</option><option>Água</option><option>Energia</option><option>Equipamentos e manutenção</option><option>Operacional</option><option>Taxas financeiras</option><option>Impostos</option><option>Pró-labore / retirada</option><option>Investimentos</option></select>';
-   const account=document.createElement('label');
-   account.innerHTML='Conta financeira <select name="accountId"><option value="">Não classificar</option>'+acc().map(a=>'<option value="'+escx(a.id)+'">'+escx(a.name)+'</option>').join('')+'</select>';
-   const submit=expenseForm.querySelector('button[type="submit"]');
-   expenseForm.insertBefore(category,submit||null);expenseForm.insertBefore(account,submit||null);
-  }
- }
- const quick=document.createElement('nav');quick.className='v7quick';quick.setAttribute('aria-label','Ações rápidas do financeiro');
- const actions=[['＋ Receber pagamento','a2PaymentForm'],['＋ Lançar despesa','a2ExpenseForm'],['Despesas fixas','a2RecurringPanel'],['Relatórios','a2FinOverview']];
- actions.forEach(([label,target])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>{const el=document.getElementById(target);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});quick.appendChild(button);});
- root.insertBefore(quick,root.firstChild);
- if(financeList&&financeList.parentElement!==root){
-  const overviewNode=root.querySelector('#a2FinOverview');
-  if(overviewNode)overviewNode.after(financeList);else root.appendChild(financeList);
- }
-};
-const oldRefresh=window.refresh;if(typeof oldRefresh==='function')window.refresh=function(id){oldRefresh(id);if(id==='financeiro')window.renderFinance()};
-
-/* A2 Financeiro: camada exclusivamente visual e de organização dos blocos. */
-const a2FinanceRenderBeforeLayout=window.renderFinance;
-window.renderFinance=function(){
- if(typeof a2FinanceRenderBeforeLayout==='function')a2FinanceRenderBeforeLayout();
- const root=document.getElementById('a2FinanceV7');if(!root)return;
- const host=document.getElementById('financeList'),legacy=document.getElementById('a2FinanceV6');
- if(legacy){Array.from(legacy.children).forEach(n=>root.insertBefore(n,host||null));if(host){host.innerHTML='';host.style.display='none';}}
- const heading=n=>(n.querySelector('h3')?.textContent||'').trim().toLowerCase();
- const rank=n=>{
-  if(n.classList?.contains('v7quick'))return 0;
-  if(n.id==='a2FinOverview')return 1;
-  if(n.classList?.contains('a2-fin-kpis'))return 90;
-  const h=heading(n);
-  if(h.includes('registrar pagamento'))return 2;
-  if(h.includes('contas a receber'))return 3;
-  if(h.includes('contas a pagar'))return 4;
-  if(h.includes('histórico de contas pagas'))return 5;
-  if(h.includes('despesas recorrentes'))return 6;
-  if(h.includes('lançamento avulso'))return 7;
-  if(h.includes('movimentações do mês'))return 8;
-  if(h.includes('contas financeiras'))return 9;
-  if(h.includes('custos e rentabilidade'))return 10;
-  if(h.includes('fluxo de caixa'))return 11;
-  if(h.includes('despesas por categoria'))return 12;
-  if(h.includes('rentabilidade estimada'))return 13;
-  if(h.includes('conciliação de extrato'))return 14;
-  return 15;
- };
- const nodes=Array.from(root.children).filter(n=>!n.classList?.contains('v7grid'));
- nodes.sort((a,b)=>rank(a)-rank(b));nodes.forEach(n=>root.appendChild(n));
- root.querySelectorAll('.v7grid').forEach(n=>n.style.display='none');
- const quick=root.querySelector('.v7quick');
- if(quick){
-  quick.innerHTML='';
-  [['＋ Receber','a2PaymentForm'],['＋ Lançamento','a2ExpenseForm'],['＋ Conta a pagar','__add'],['Relatórios','__report']].forEach(([label,target])=>{
-   const b=document.createElement('button');b.type='button';b.textContent=label;
-   b.addEventListener('click',()=>{
-    if(target==='__add'){window.a2V7AddPayable?.();return;}
-    let el=target==='__report'?Array.from(root.querySelectorAll('.v7panel')).find(p=>/fluxo de caixa|despesas por categoria|rentabilidade estimada|conciliação de extrato/i.test(heading(p))):document.getElementById(target);
-    el?.scrollIntoView({behavior:'smooth',block:'start'});
-   });quick.appendChild(b);
-  });
- }
-};
-const a2FinanceLayoutStyle=document.createElement('style');
-a2FinanceLayoutStyle.id='a2-finance-mobile-redesign';
-a2FinanceLayoutStyle.textContent=`
-#financeiro>.kpi,#financeiro>.stats{display:none!important}
-#financeiro>h1{margin:18px 0 3px;font-size:26px;letter-spacing:-.5px}
-#financeiro>.sub{margin-bottom:14px;font-size:12px}
-#a2FinanceV7{display:flex;flex-direction:column;gap:11px;min-width:0}
-#a2FinanceV7 .v7quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 2px}
-#a2FinanceV7 .v7quick button{min-height:43px;border:1px solid var(--line);border-radius:11px;background:var(--card2);color:var(--text);font-size:12px;font-weight:750;padding:9px 8px}
-#a2FinanceV7 .v7quick button:first-child{background:var(--orange);border-color:var(--orange);color:#17191d}
-#a2FinanceV7 .v7panel,#a2FinanceV7 .a2-fin-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin:0;min-width:0;box-shadow:none}
-#a2FinanceV7 .v7panel h3,#a2FinanceV7 .a2-fin-panel h3{font-size:14px;line-height:1.3;font-weight:800;margin:0 0 10px}
-#a2FinanceV7 .v7grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:9px 0}
-#a2FinanceV7 .v7box{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;box-shadow:none;min-width:0}
-#a2FinanceV7 .v7box small{font-size:10px;line-height:1.35}
-#a2FinanceV7 .v7box b{font-size:17px;line-height:1.2;overflow-wrap:anywhere}
-#a2FinanceV7 .v7row{display:flex;align-items:flex-start;gap:9px;padding:11px 0;border-bottom:1px solid var(--line);min-width:0}
-#a2FinanceV7 .v7row>div:first-child{flex:1;min-width:0}
-#a2FinanceV7 .v7row b{font-size:12px;overflow-wrap:anywhere}
-#a2FinanceV7 .v7muted,#a2FinanceV7 .smallnote{font-size:10px;line-height:1.45;color:var(--muted)}
-#a2FinanceV7 .v7bill-actions{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;min-width:0}
-#a2FinanceV7 button{border-radius:9px;font-weight:700}
-#a2FinanceV7 .v7bill-actions button,#a2FinanceV7 .mini{min-height:32px;padding:7px 9px;font-size:10px}
-#a2FinanceV7 .a2-fin-kpis{display:none!important}
-#a2FinanceV7 .a2-fin-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0}
-#a2FinanceV7 .a2-fin-form label{display:flex;flex-direction:column;gap:5px;margin:0;min-width:0;color:var(--muted);font-size:10px;font-weight:700}
-#a2FinanceV7 .a2-fin-form input,#a2FinanceV7 .a2-fin-form select{width:100%;min-width:0;min-height:41px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:#0f1216;color:var(--text);font-size:13px}
-#a2FinanceV7 .a2-fin-form .wide,#a2FinanceV7 .a2-fin-form button{grid-column:1/-1}
-#a2FinanceV7 .a2-fin-form button{min-height:42px;margin:0;padding:10px 12px;font-size:12px}
-#a2FinanceV7 .a2-fin-card{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;margin:8px 0}
-#a2FinanceV7 .a2-fin-card>p{font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
-#a2FinanceV7 .a2-fin-status{display:inline-block;padding:4px 8px;border-radius:20px;background:#34302a;color:#f2bd78;font-size:10px;font-weight:800}
-#a2FinanceV7 .a2-fin-status.paid{background:#17372a;color:#78d7a6}
-#a2FinanceV7 .a2-fin-status.partial{background:#3a3020;color:#f2bd78}
-#a2FinanceV7 .v7actions{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}
-#a2FinanceV7 .v7actions button{flex:1 1 130px;min-height:38px;margin:0;padding:8px 10px;font-size:11px}
-#a2FinanceV7 progress{height:9px;border-radius:20px;overflow:hidden}
-#a2FinanceV7 .empty{padding:16px 10px;font-size:11px;line-height:1.45}
-#a2FinanceV7 section{scroll-margin-top:14px}
-@media(max-width:380px){
- #a2FinanceV7 .v7panel,#a2FinanceV7 .a2-fin-panel{padding:11px}
- #a2FinanceV7 .v7box{padding:9px}
- #a2FinanceV7 .v7box b{font-size:15px}
- #a2FinanceV7 .v7bill-actions{justify-content:flex-start;width:100%}
- #a2FinanceV7 .v7row{flex-wrap:wrap}
- #a2FinanceV7 .a2-fin-form{grid-template-columns:1fr}
- #a2FinanceV7 .a2-fin-form .wide,#a2FinanceV7 .a2-fin-form button{grid-column:1}
-}
+const keyDate=d=>d?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'):'';
+const isDone=o=>['concluida','concluido','finalizada','finalizado','completed'].includes(norm(o?.status));
+const amount=o=>{const n=Number(o?.totalValue??o?.value??0);return Number.isFinite(n)?n:0};
+const clientLabel=o=>clients.find(c=>String(c.id)===String(o?.clientId))?.name||o?.clientName||o?.name||'Cliente não identificado';
+const vehicleLabelReport=o=>{const v=vehicles.find(x=>String(x.id)===String(o?.vehicleId));return v?(typeof vehicleLabel==='function'?vehicleLabel(v.id):[v.brand,v.model,v.plate].filter(Boolean).join(' ')):(o?.car||o?.vehicle||'Veículo não identificado')};
+const serviceItems=o=>Array.isArray(o?.services)&&o.services.length?o.services:[{service:o?.service||'Serviço não informado',value:amount(o)}];
+const moneyReport=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const today=()=>keyDate(new Date());
+section.innerHTML=`
+ <h1>Relatórios</h1><div class="sub">Acompanhe resultados, operação e desempenho da A2.</div>
+ <div class="a2-enhance" id="a2ReportFilters">
+  <h3>Filtros do relatório</h3>
+  <div class="a2-grid">
+   <label>Período<select id="a2RepPeriod"><option value="month">Este mês</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="year">Este ano</option><option value="all">Todo o período</option><option value="custom">Personalizado</option></select></label>
+   <label>Tipo de relatório<select id="a2RepType"><option value="all">Visão geral</option><option value="finance">Financeiro</option><option value="services">Serviços</option><option value="clients">Clientes</option><option value="commercial">Comercial</option><option value="operations">Operacional</option></select></label>
+   <label>Data inicial<input id="a2RepStart" type="date"></label>
+   <label>Data final<input id="a2RepEnd" type="date"></label>
+   <label>Cliente<select id="a2RepClient"><option value="">Todos os clientes</option></select></label>
+   <label>Veículo<select id="a2RepVehicle"><option value="">Todos os veículos</option></select></label>
+   <label>Serviço<select id="a2RepService"><option value="">Todos os serviços</option></select></label>
+   <label>Situação da OS<select id="a2RepStatus"><option value="">Todas as situações</option><option value="done">Concluídas</option><option value="open">Em andamento / abertas</option><option value="cancel">Canceladas</option></select></label>
+  </div>
+  <div class="a2-actions"><button class="primary" type="button" onclick="a2ApplyReports()">APLICAR FILTROS</button><button class="secondary" type="button" onclick="a2ResetReports()">LIMPAR FILTROS</button></div>
+ </div>
+ <div id="a2ReportOutput" aria-live="polite"></div>
+ <div id="a2ReportPrint" style="display:none"></div>
+ <div class="a2-actions"><button class="primary" type="button" onclick="a2ExportReportsPDF()">📄 GERAR / SALVAR PDF</button></div>
+ <p class="smallnote">O PDF respeita os filtros aplicados. No iPhone, escolha “Salvar em Arquivos” na tela de impressão/compartilhamento, quando disponível.</p>
 `;
-document.head.appendChild(a2FinanceLayoutStyle);
+const style=document.createElement('style');
+style.textContent=`
+#a2ReportFilters{margin-top:12px}#a2ReportFilters .a2-grid{grid-template-columns:1fr 1fr;gap:8px}#a2ReportFilters label{font-size:11px;color:var(--muted)}#a2ReportFilters input,#a2ReportFilters select{width:100%;min-width:0;height:42px;margin-top:5px;padding:8px;background:#0f1216;color:var(--text);border:1px solid var(--line);border-radius:9px;font-size:12px}#a2ReportOutput .a2-report-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}#a2ReportOutput .a2-report-kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}#a2ReportOutput .a2-report-kpi small{display:block;color:var(--muted);font-size:10px}#a2ReportOutput .a2-report-kpi b{display:block;font-size:18px;margin-top:5px;overflow-wrap:anywhere}#a2ReportOutput .a2-enhance{margin-top:10px}#a2ReportOutput .a2-table{font-size:11px;display:table;width:100%;table-layout:auto}#a2ReportOutput .a2-table th,#a2ReportOutput .a2-table td{padding:7px 4px;overflow-wrap:anywhere}#a2ReportOutput .a2-table td:last-child{text-align:right}#a2ReportOutput .a2-table th:last-child{text-align:right}@media(max-width:360px){#a2ReportFilters .a2-grid{grid-template-columns:1fr}#a2ReportOutput .a2-report-kpi b{font-size:16px}}
+@media print{body.a2-print-report *{visibility:hidden!important}body.a2-print-report #a2ReportPrint,body.a2-print-report #a2ReportPrint *{visibility:visible!important}body.a2-print-report #a2ReportPrint{display:block!important;position:absolute!important;left:0!important;top:0!important;width:100%!important;padding:18px!important;background:#fff!important;color:#171717!important;font-family:Arial,sans-serif!important}body.a2-print-report #a2ReportPrint h1{font-size:22px;margin:0 0 4px;color:#111}body.a2-print-report #a2ReportPrint h2{font-size:14px;margin:18px 0 7px;border-bottom:1px solid #ddd;padding-bottom:5px}body.a2-print-report #a2ReportPrint .print-meta{font-size:10px;color:#555;margin:5px 0 12px}body.a2-print-report #a2ReportPrint .print-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}body.a2-print-report #a2ReportPrint .print-kpi{border:1px solid #ddd;border-radius:6px;padding:9px}body.a2-print-report #a2ReportPrint .print-kpi small{display:block;color:#555;font-size:9px}body.a2-print-report #a2ReportPrint .print-kpi b{display:block;font-size:15px;margin-top:4px}body.a2-print-report #a2ReportPrint table{width:100%;border-collapse:collapse;font-size:9px}body.a2-print-report #a2ReportPrint th,body.a2-print-report #a2ReportPrint td{border-bottom:1px solid #ddd;padding:6px 4px;text-align:left}body.a2-print-report #a2ReportPrint th:last-child,body.a2-print-report #a2ReportPrint td:last-child{text-align:right}body.a2-print-report #a2ReportPrint .print-brand{font-weight:800;color:#e8751b;letter-spacing:1px;font-size:11px;margin-bottom:8px}body.a2-print-report #a2ReportPrint .print-foot{margin-top:20px;padding-top:8px;border-top:2px solid #e8751b;font-size:9px;color:#555}body.a2-print-report .nav{display:none!important}}
+`;
+document.head.appendChild(style);
+function populate(){
+ const fill=(id,items,label)=>{const el=document.getElementById(id);if(!el)return;const old=el.value;el.innerHTML='<option value="">'+label+'</option>'+items.map(x=>'<option value="'+escHtml(x.value)+'">'+escHtml(x.label)+'</option>').join('');if([...el.options].some(o=>o.value===old))el.value=old};
+ fill('a2RepClient',clients.map(c=>({value:c.id,label:c.name||'Cliente'})),'Todos os clientes');
+ fill('a2RepVehicle',vehicles.map(v=>({value:v.id,label:(typeof vehicleLabel==='function'?vehicleLabel(v.id):[v.brand,v.model,v.plate].filter(Boolean).join(' '))||'Veículo'})),'Todos os veículos');
+ const allServices=[...new Set([...services.map(s=>s.name),...orders.flatMap(o=>serviceItems(o).map(x=>x.service))].filter(Boolean))].sort();
+ fill('a2RepService',allServices.map(s=>({value:s,label:s})),'Todos os serviços');
+}
+function selectedRange(){
+ const period=document.getElementById('a2RepPeriod').value,now=new Date();let start='',end=today();
+ if(period==='month'){start=keyDate(new Date(now.getFullYear(),now.getMonth(),1))}
+ else if(period==='year'){start=keyDate(new Date(now.getFullYear(),0,1))}
+ else if(['7','30','90'].includes(period)){const d=new Date(now);d.setDate(d.getDate()-(Number(period)-1));start=keyDate(d)}
+ else if(period==='custom'){start=document.getElementById('a2RepStart').value;end=document.getElementById('a2RepEnd').value}
+ else if(period==='all'){start='';end=''}
+ if(period!=='custom'&&period!=='all'){document.getElementById('a2RepStart').value=start;document.getElementById('a2RepEnd').value=end}
+ return {start,end};
+}
+function calculate(){
+ const {start,end}=selectedRange(),client=document.getElementById('a2RepClient').value,vehicle=document.getElementById('a2RepVehicle').value,service=document.getElementById('a2RepService').value,status=document.getElementById('a2RepStatus').value,type=document.getElementById('a2RepType').value;
+ let rows=orders.filter(o=>{
+  const d=dateValue(o),k=keyDate(d);if((start&&(!k||k<start))||(end&&(!k||k>end)))return false;
+  if(client&&String(o.clientId)!==String(client))return false;
+  if(vehicle&&String(o.vehicleId)!==String(vehicle))return false;
+  if(status==='done'&&!isDone(o))return false;
+  if(status==='open'&&(isDone(o)||norm(o.status).includes('cancel')))return false;
+  if(status==='cancel'&&!norm(o.status).includes('cancel'))return false;
+  if(service&&!serviceItems(o).some(x=>norm(x.service)===norm(service)))return false;
+  return true;
+ });
+ const completed=rows.filter(isDone),revenue=completed.reduce((s,o)=>s+amount(o),0),ticket=completed.length?revenue/completed.length:0;
+ const serviceMap=new Map(),clientMap=new Map(),monthMap=new Map();
+ completed.forEach(o=>{
+  const parts=serviceItems(o);parts.forEach(p=>{const n=p.service||'Serviço não informado',v=Number(p.value??p.totalValue??0)||0;const old=serviceMap.get(n)||{count:0,total:0};old.count++;old.total+=v;serviceMap.set(n,old)});
+  const cn=clientLabel(o),co=clientMap.get(cn)||{count:0,total:0};co.count++;co.total+=amount(o);clientMap.set(cn,co);
+  const d=dateValue(o),m=d?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'):'Sem data';monthMap.set(m,(monthMap.get(m)||0)+amount(o));
+ });
+ const approved=budgets.filter(b=>norm(b.status).includes('aprov')||b.orderId),rejected=budgets.filter(b=>norm(b.status).includes('recus')||norm(b.status).includes('rejeit')),openBudgets=budgets.filter(b=>!approved.includes(b)&&!rejected.includes(b));
+ const budgetTotal=approved.length+rejected.length+openBudgets.length,conversion=budgetTotal?approved.length/budgetTotal*100:0;
+ return {rows,completed,revenue,ticket,serviceMap,clientMap,monthMap,approved,rejected,openBudgets,conversion,range:{start,end},filters:{client,vehicle,service,status,type}};
+}
+function tableRows(map,kind){
+ const arr=[...map.entries()].sort((a,b)=>b[1].total-a[1].total);
+ if(!arr.length)return '<tr><td colspan="3">Sem registros para os filtros selecionados.</td></tr>';
+ return arr.map(([n,v])=>'<tr><td>'+escHtml(n)+'</td><td>'+v.count+'</td><td>'+moneyReport(v.total)+'</td></tr>').join('');
+}
+function render(){
+ populate();const d=calculate(),out=document.getElementById('a2ReportOutput'),type=d.filters.type;
+ const kpis='<div class="a2-report-kpis"><div class="a2-report-kpi"><small>Faturamento concluído</small><b>'+moneyReport(d.revenue)+'</b></div><div class="a2-report-kpi"><small>OS concluídas</small><b>'+d.completed.length+'</b></div><div class="a2-report-kpi"><small>Ticket médio</small><b>'+moneyReport(d.ticket)+'</b></div><div class="a2-report-kpi"><small>OS no filtro</small><b>'+d.rows.length+'</b></div></div>';
+ const service='<div class="a2-enhance"><h3>Desempenho por serviço</h3><table class="a2-table"><thead><tr><th>Serviço</th><th>Qtd.</th><th>Valor</th></tr></thead><tbody>'+tableRows(d.serviceMap)+'</tbody></table></div>';
+ const client='<div class="a2-enhance"><h3>Clientes atendidos</h3><table class="a2-table"><thead><tr><th>Cliente</th><th>OS</th><th>Valor</th></tr></thead><tbody>'+tableRows(d.clientMap)+'</tbody></table></div>';
+ const commercial='<div class="a2-enhance"><h3>Desempenho comercial</h3><p>Orçamentos aprovados/vinculados: <b>'+d.approved.length+'</b></p><p>Orçamentos recusados: <b>'+d.rejected.length+'</b></p><p>Orçamentos em aberto / sem classificação: <b>'+d.openBudgets.length+'</b></p><p>Conversão aproximada: <b>'+d.conversion.toFixed(1).replace('.',',')+'%</b></p><p class="smallnote">A conversão considera o status atual dos orçamentos cadastrados; não representa necessariamente apenas os orçamentos criados no período filtrado.</p></div>';
+ const operations='<div class="a2-enhance"><h3>Resumo operacional</h3><p>OS concluídas: <b>'+d.completed.length+'</b></p><p>OS em andamento/abertas: <b>'+d.rows.filter(o=>!isDone(o)&&!norm(o.status).includes('cancel')).length+'</b></p><p>OS canceladas: <b>'+d.rows.filter(o=>norm(o.status).includes('cancel')).length+'</b></p></div>';
+ const monthRows=[...d.monthMap.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([m,v])=>'<tr><td>'+escHtml(m)+'</td><td>'+moneyReport(v)+'</td></tr>').join('')||'<tr><td colspan="2">Sem dados.</td></tr>';
+ const monthly='<div class="a2-enhance"><h3>Faturamento por mês</h3><table class="a2-table"><thead><tr><th>Mês</th><th>Faturamento</th></tr></thead><tbody>'+monthRows+'</tbody></table></div>';
+ out.innerHTML=kpis+((type==='all'||type==='finance')?monthly:'')+((type==='all'||type==='services')?service:'')+((type==='all'||type==='clients')?client:'')+((type==='all'||type==='commercial')?commercial:'')+((type==='all'||type==='operations')?operations:'')+((type==='finance')?'<div class="a2-enhance"><h3>Observação financeira</h3><p>Faturamento considera somente OS concluídas. Recebimentos, contas a receber e despesas não são somados aqui para evitar confundir faturamento com dinheiro efetivamente recebido ou lucro.</p></div>':'');
+ window.a2CurrentReportData=d;buildPrint(d);
+}
+function buildPrint(d){
+ const el=document.getElementById('a2ReportPrint');if(!el)return;
+ const filterText=['Período: '+(d.range.start||'Todo o período')+' até '+(d.range.end||'sem limite'), 'Cliente: '+(d.filters.client?clientLabel({clientId:d.filters.client}):'Todos'), 'Veículo: '+(d.filters.vehicle?vehicleLabelReport({vehicleId:d.filters.vehicle}):'Todos'), 'Serviço: '+(d.filters.service||'Todos'), 'Situação: '+(d.filters.status||'Todas')].join(' • ');
+ const rows=d.completed.map(o=>'<tr><td>'+escHtml(dateValue(o)?.toLocaleDateString('pt-BR')||'')+'</td><td>'+escHtml(clientLabel(o))+'</td><td>'+escHtml(vehicleLabelReport(o))+'</td><td>'+escHtml(o.service||serviceItems(o).map(x=>x.service).join(', '))+'</td><td>'+moneyReport(amount(o))+'</td></tr>').join('')||'<tr><td colspan="5">Nenhum serviço concluído no período selecionado.</td></tr>';
+ const makeTable=(title,map)=>'<h2>'+title+'</h2><table><thead><tr><th>Descrição</th><th>Quantidade</th><th>Faturamento</th></tr></thead><tbody>'+tableRows(map)+'</tbody></table>';
+ el.innerHTML='<div class="print-brand">A2 ESTÉTICA AUTOMOTIVA • A2 GESTÃO</div><h1>Relatório gerencial</h1><div class="print-meta">'+escHtml(filterText)+'<br>Gerado em '+new Date().toLocaleString('pt-BR')+'</div><div class="print-kpis"><div class="print-kpi"><small>Faturamento concluído</small><b>'+moneyReport(d.revenue)+'</b></div><div class="print-kpi"><small>OS concluídas</small><b>'+d.completed.length+'</b></div><div class="print-kpi"><small>Ticket médio</small><b>'+moneyReport(d.ticket)+'</b></div><div class="print-kpi"><small>OS no filtro</small><b>'+d.rows.length+'</b></div></div>'+makeTable('Serviços',d.serviceMap)+makeTable('Clientes',d.clientMap)+'<h2>Ordens de serviço concluídas</h2><table><thead><tr><th>Data</th><th>Cliente</th><th>Veículo</th><th>Serviço</th><th>Valor</th></tr></thead><tbody>'+rows+'</tbody></table><h2>Comercial</h2><p>Orçamentos aprovados/vinculados: '+d.approved.length+' • Recusados: '+d.rejected.length+' • Em aberto/sem classificação: '+d.openBudgets.length+' • Conversão aproximada: '+d.conversion.toFixed(1)+'%</p><div class="print-foot">Não é só estética, é experiência. • Documento gerado pelo A2 Gestão.</div>';
+}
+window.a2ApplyReports=render;
+window.a2ResetReports=function(){['a2RepClient','a2RepVehicle','a2RepService','a2RepStatus'].forEach(id=>document.getElementById(id).value='');document.getElementById('a2RepPeriod').value='month';document.getElementById('a2RepType').value='all';document.getElementById('a2RepStart').value='';document.getElementById('a2RepEnd').value='';render()};
+window.a2ExportReportsPDF=function(){if(!window.a2CurrentReportData)render();document.body.classList.add('a2-print-report');const cleanup=()=>document.body.classList.remove('a2-print-report');window.addEventListener('afterprint',cleanup,{once:true});setTimeout(()=>{window.print();setTimeout(cleanup,1500)},100)};
+window.renderReports=render;
+document.getElementById('a2RepPeriod').addEventListener('change',()=>{const p=document.getElementById('a2RepPeriod').value;const custom=p==='custom';document.getElementById('a2RepStart').disabled=!custom;document.getElementById('a2RepEnd').disabled=!custom;render()});
+['a2RepType','a2RepClient','a2RepVehicle','a2RepService','a2RepStatus','a2RepStart','a2RepEnd'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+document.getElementById('a2RepStart').disabled=true;document.getElementById('a2RepEnd').disabled=true;
+populate();render();
 })();
 </script>
 </body></html>
